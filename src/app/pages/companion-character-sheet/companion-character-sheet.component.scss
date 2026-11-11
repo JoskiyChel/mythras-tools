@@ -11,3 +11,43 @@ button:focus-visible, input:focus-visible,select:focus-visible,textarea:focus-vi
 @media(max-width:1480px){.character-columns{grid-template-columns:1fr 1fr}.effects-zone{grid-column:1/-1;border-top:1px solid #e8eee7;border-left:0}.character-columns .summary-zone{border-right:1px solid #e8eee7}.character-columns .body-zone{border-left:0}.effects-zone{min-height:150px}.fatigue{max-width:420px}.tradition-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:960px){.sheet-layout{grid-template-columns:minmax(215px,270px) minmax(0,1fr)}.character-columns{display:flex;flex-direction:column}.character-columns .summary-zone{border-right:0}.character-columns .body-zone{border-top:1px solid #e8eee7}.character-columns .effects-zone{border-top:1px solid #e8eee7}.tradition-grid,.equipment-list,.armour-list{grid-template-columns:1fr}.masthead-brand{font-size:13px}.masthead-tools{gap:4px}.masthead-tools button,.masthead-tools a{font-size:9px;padding:4px}}
 @media(max-width:680px){.sheet-layout{display:block}.skills-panel{margin-bottom:12px}.masthead{padding:0 8px}.masthead-brand small{display:none}.masthead-tools{gap:2px}.masthead-tools button,.masthead-tools a{font-size:9px;padding:4px}.character-header .year-label{display:none}.difficulty-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* V2: standalone magic cards must not stretch when the neighbour expands. */
+.tradition-grid{align-items:start;grid-auto-rows:min-content}
+.tradition{align-self:start;height:auto;min-height:0}
+/* V2: inspect all fatigue levels in the effects column. */
+.fatigue-current{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 8px;padding:8px 1px 3px;font-size:10px;color:#846d48}
+.fatigue-help-toggle{display:flex;justify-content:space-between;width:100%;padding:7px 2px 2px;background:transparent;border:0;color:#886539;font-size:10px;font-weight:700;text-align:left}
+.fatigue-table-scroll{margin-top:7px;overflow-x:auto;border-radius:7px;border:1px solid #e3d9c2;background:white}
+.fatigue-table{border-collapse:collapse;min-width:540px;width:100%;font-size:9.5px}
+.fatigue-table caption{text-align:left;font-size:9px;color:#928468;padding:7px}
+.fatigue-table th,.fatigue-table td{border-bottom:1px solid #eee9dd;padding:5px 7px;text-align:left;white-space:nowrap}
+.fatigue-table th{background:#f5f0e5;color:#775e32}.fatigue-table tr.active-fatigue{background:#e8f4e9;font-weight:700}
+.fatigue-source{font-size:9px;padding:3px 7px;color:#849080}
+.effect-create .field-label{display:block;margin:6px 0 8px;font-size:10px;color:#68806c;font-weight:650}
+.effect-create .field-label input,.effect-create .field-label textarea{width:100%;display:block;margin-top:4px;border:1px solid #dbe7dc;border-radius:5px;padding:7px;font-size:11px;color:#31533a;background:white}
+.effect-create .field-label textarea{resize:vertical;min-height:68px}
+.effect-description{font-size:10px;white-space:pre-wrap;color:#5d7561;line-height:1.5;margin:4px 0 0}
+.effect-modifier-heading{margin-top:8px;font-size:10px;font-weight:bold;color:#607d68}.effect-modifier-heading span{font-weight:400;color:#96a79c}
+.old-gift{background:#fafaf4;border-color:#e6e7d9}
+
+.fatigue-title-button{background:transparent;border:0;padding:0;color:#876b42;font-size:11px;font-weight:750}
+.fatigue-title-button span{font-size:12px;margin-left:3px}
+.fatigue-dialog{width:min(100%,850px)}
+.fatigue-dialog .fatigue-table{min-width:630px;font-size:11px}
+.fatigue-dialog .fatigue-table th,.fatigue-dialog .fatigue-table td{padding:10px 9px}
+
+/* V3: one input defines the damage/healing amount for the two HP buttons. */
+.hp-edit-controls{display:flex;flex-direction:column;gap:5px;align-items:stretch;min-width:97px}
+.hp-edit-controls .control-pair{justify-content:flex-end}
+.hp-edit-controls .control-pair button:disabled{opacity:.4;cursor:not-allowed}
+.hp-amount-label{display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:9px;color:#708c79;white-space:nowrap}
+.hp-amount-label input{width:56px;min-width:0;border:1px solid #d6e5d8;border-radius:5px;padding:3px 5px;background:#fff;color:#305f40;text-align:center;font-size:11px;font-weight:700}
+.hp-amount-label input[aria-invalid="true"]{border-color:#c36b61;background:#fcf1ef}
+.hp-amount-help{font-size:9px;color:#af5952!important;text-align:right}
+/* Magic skills are the same interactive difficulty targets as the main skill list. */
+.tradition-skills .magic-skill-button{display:inline-flex;align-items:center;gap:3px;border:1px solid #dce8dd;border-radius:6px;background:#f8fbf7;padding:5px 7px;font-size:10px;color:#477456;white-space:nowrap;line-height:1.3}
+.tradition-skills .magic-skill-button:not(:disabled):hover{background:#e7f4ea;border-color:#a6cfb2;color:#2c6e45}
+.tradition-skills .magic-skill-button:disabled{cursor:default;opacity:.65}
+.magic-skill-button strong{font-size:10px;color:#2d7850}
+.magic-skill-arrow{color:#3d8058;margin-left:3px}

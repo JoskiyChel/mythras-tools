@@ -3,6 +3,8 @@ import { getCurrentHp } from './hit-points';
 import {
   CompanionCharacter, currentCharacteristic, skillTotal, damageModifier,
   companionState, maxLocationHp, skillGroups, movementSummary, modifierTotal,
+  armourPenalty, fatigueRule, attributeTotal, displayedLocationHp, initializePristineHitPoints, movement,
+  changeLocationHp, findTraditionSkill,
 } from './companion-sheet';
 
 describe('Companion sheet / legacy character compatibility', () => {
@@ -42,6 +44,22 @@ describe('Companion sheet / legacy character compatibility', () => {
     expect(getCurrentHp(c,'leftArm')).toBe('');
     expect(maxLocationHp(c,'abdoment')).toBeGreaterThan(0); // legacy spelling kept
     expect(c.currentHitPoints?.leftArm).toBeUndefined();
+    expect(displayedLocationHp(c,'leftArm')).toBe(maxLocationHp(c,'leftArm'));
+    expect(c.currentHitPoints?.leftArm).toBeUndefined();
+  });
+
+  it('fills all hit locations only for genuinely uninitialised characters', () => {
+    const c=character();
+    expect(initializePristineHitPoints(c)).toBeFalse();
+    expect(c.currentHitPoints?.leftArm).toBeUndefined();
+    c.currentHitPoints={};
+    expect(initializePristineHitPoints(c)).toBeTrue();
+    expect(c.currentHitPoints.head).toBe(maxLocationHp(c,'head'));
+    expect(c.currentHitPoints.leftArm).toBe(maxLocationHp(c,'leftArm'));
+    expect(initializePristineHitPoints(c)).toBeFalse();
+    c.currentHitPoints={head:0};
+    expect(initializePristineHitPoints(c)).toBeFalse();
+    expect(c.currentHitPoints.leftArm).toBeUndefined();
   });
 
   it('preserves new companion fields and unknown legacy data on round-trip', () => {
@@ -62,11 +80,77 @@ describe('Companion sheet / legacy character compatibility', () => {
     expect(groups[1].skills.some(s=>s.name==='Brawn')).toBeFalse();
   });
 
+  it('subtracts armour and fatigue from Initiative and fatigue from Action Points', () => {
+    const c=character();
+    const baseInit=attributeTotal(c,'init');
+    const baseAP=attributeTotal(c,'ap');
+    expect(armourPenalty(c)).toBe(1); // head ENC 4: ceil(4/5)
+    expect(baseInit).toBe(13); // ceil((10+17)/2)=14, armour -1
+    c.fatigueLevel='Wearied';
+    expect(attributeTotal(c,'init')).toBe(baseInit-2);
+    expect(attributeTotal(c,'ap')).toBe(baseAP);
+    c.fatigueLevel='Exhausted';
+    expect(attributeTotal(c,'init')).toBe(baseInit-4);
+    expect(attributeTotal(c,'ap')).toBe(baseAP-1);
+    c.fatigueLevel='Semi-Conscious';
+    expect(attributeTotal(c,'ap')).toBe(0);
+    expect(movement(c)).toBe(0);
+  });
+
+  it('accepts narrative-only effects and keeps old gift data', () => {
+    const c=character();
+    companionState(c).gifts=[{id:'legacy',name:'Gift',description:'No numeric bonus'}];
+    companionState(c).effects=[{id:'narrative',name:'Fear',duration:'Scene',description:'Cannot enter the shrine.',modifiers:[]}];
+    const next=hydrateCharacter(JSON.parse(JSON.stringify(c))) as CompanionCharacter;
+    expect(next.companion?.effects?.[0].description).toBe('Cannot enter the shrine.');
+    expect(next.companion?.effects?.[0].modifiers.length).toBe(0);
+    expect(next.companion?.gifts?.[0].name).toBe('Gift');
+  });
+
+  it('applies fatigue movement penalties and half armour penalty to jumps', () => {
+    const c=character();
+    const fresh=movementSummary(c);
+    c.fatigueLevel='Tired';
+    const tired=movementSummary(c);
+    expect(tired.walking).toBe(fresh.walking-1);
+    expect(tired.running).toBeLessThan(fresh.running);
+    c.fatigueLevel='Debilitated';
+    expect(movementSummary(c).walking).toBe(fresh.walking/2);
+    c.fatigueLevel='Incapacitated';
+    expect(movementSummary(c).running).toBe(0);
+    expect(fatigueRule(c).actionPoints).toBe(-3);
+  });
+
   it('uses the same walking baseline and numeric height as the original viewer', () => {
     const c=character();
     const move=movementSummary(c);
     expect(move.walking).toBe(6);
     expect(move.heightMetres).toBe(1.65);
     expect(move.athletics).toBeGreaterThan(0);
+  });
+
+  it('uses the canonical Skill instance for clicking magical skills', () => {
+    const c=character();
+    const folk=c.skills.skills.find(s=>s.name==='Folk Magic')!;
+    expect(findTraditionSkill(c,'Folk Magic')).toBe(folk);
+    const chosen=findTraditionSkill(c,'Folk Magic')!;
+    expect(skillTotal(c,chosen)).toBe(skillTotal(c,folk));
+    expect(findTraditionSkill(c,'NoSuchMagicalSkill')).toBeNull();
+  });
+
+  it('changes HP by an arbitrary valid amount, clamps healing, and preserves other locations', () => {
+    const c=character();
+    const max=maxLocationHp(c,'leftArm');
+    const unchangedHead=c.currentHitPoints?.head;
+    expect(changeLocationHp(c,'leftArm',-3)).toBe(max-3);
+    expect(c.currentHitPoints?.leftArm).toBe(max-3);
+    expect(changeLocationHp(c,'leftArm',2)).toBe(max-1);
+    expect(changeLocationHp(c,'leftArm',10)).toBe(max);
+    expect(changeLocationHp(c,'leftArm',-(max+5))).toBe(-5);
+    expect(changeLocationHp(c,'leftArm',Number.NaN)).toBe(-5);
+    expect(changeLocationHp(c,'leftArm',0)).toBe(-5);
+    expect(c.currentHitPoints?.head).toBe(unchangedHead);
+    const roundTripped=hydrateCharacter(JSON.parse(JSON.stringify(c))) as CompanionCharacter;
+    expect(roundTripped.currentHitPoints?.leftArm).toBe(-5);
   });
 });

@@ -8,16 +8,16 @@ import { Spell } from '../../model/spell';
 import { AppStorageService, DebouncedSaveHandle } from '../../services/app-storage.service';
 import { downloadJson } from '../../services/character-format';
 import { getAllCombatStyles } from '../../services/character-service.service';
-import { HIT_LOCATIONS, HitLocation, getCurrentHp, setCurrentHp } from '../../services/hit-points';
+import { HIT_LOCATIONS, HitLocation } from '../../services/hit-points';
 import {
   CompanionCharacter, CharacteristicKey, AttributeKey,
-  CHARACTERISTICS, FATIGUE, SheetEffect, SheetModifier,
+  CHARACTERISTICS, FATIGUE, FATIGUE_RULES, SheetEffect, SheetModifier,
   companionState, currentCharacteristic, skillTotal, attributeTotal, damageModifier,
-  magicPointMaximum, maxLocationHp, movementSummary, skillGroups, severity,
+  magicPointMaximum, maxLocationHp, displayedLocationHp, initializePristineHitPoints, movementSummary,
+  skillGroups, severity, fatigueRule, canAct, changeLocationHp, findTraditionSkill,
 } from '../../services/companion-sheet';
 
 type SheetTab = 'weapons'|'magic'|'armour'|'equipment'|'notes';
-type SheetEffectsTab = 'effects'|'gifts';
 interface LocationDisplay {
   key: HitLocation; label:string; roll:string;
   path:string; centerX:number; centerY:number; labelX:number; labelY:number;
@@ -59,6 +59,11 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   character!:CompanionCharacter;
   readonly characteristics=CHARACTERISTICS;
   readonly fatigueLevels=FATIGUE;
+  readonly fatigueRules=FATIGUE_RULES;
+  fatigueTableOpen=false;
+  readonly characteristicModifierOptions=CHARACTERISTICS.map(key=>({key,label:key.toUpperCase()}));
+  readonly attributeModifierOptions=ATT_KEYS.map(x=>({key:x.key,label:x.name}));
+  private skillModifierOptions:{key:string;label:string}[]=[];
   readonly locations=LOCATIONS;
   readonly difficulties=DIFFICULTIES;
   readonly tabs:{key:SheetTab;label:string}[]=[
@@ -69,32 +74,42 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     {key:'notes',label:'Игровые заметки'},
   ];
   activeTab:SheetTab='weapons';
-  effectsTab:SheetEffectsTab='effects';
   query='';
   activeSkill:Skill|null=null;
   movementDialog=false;
   selectedLocation:HitLocation='chest';
+  /** HP to deal or restore with a single click. The amount is shared by all locations. */
+  hpAmount=1;
   openedWeapon=-1;
   openedSpell='';
   upgrade=false;
   draftStats:Partial<Record<CharacteristicKey,number>>={};
   readonly draftSkills=new Map<Skill,number>();
   addingEffect=false;
-  effectName=''; effectDuration='';
+  effectName=''; effectDuration=''; effectDescription='';
   newModifiers:SheetModifier[]=[];
-  newGiftName='';
   editingEquipment=false;
 
   ngOnInit():void {
     this.character=this.storage.readCharacter('view-character') as CompanionCharacter;
+    const hpInitialised=initializePristineHitPoints(this.character);
+    const options=[...this.character.skills.skills,...(this.character.skills.specialized||[]),
+      ...(this.character.skills.combatstyles||[]),
+      ...(this.character.skills.extraProfessionalCultureSkills||[]),
+      ...(this.character.skills.extraProfessionalCareerSkills||[]),
+      ...(this.character.skills.hobby?[this.character.skills.hobby]:[])];
+    // A persistent array prevents Angular recreating <option> elements and
+    // resetting the native select to its first item on every change detection.
+    this.skillModifierOptions=[...new Set(options.filter(Boolean).map(s=>s.name))].map(key=>({key,label:key}));
     this.saveHandle=this.storage.createDebouncedSave(()=>this.save(),350);
+    if(hpInitialised)this.saveHandle.schedule();
   }
   ngOnDestroy():void {this.saveHandle?.flush();this.saveHandle?.destroy();}
   @HostListener('document:input') @HostListener('document:change') @HostListener('document:click')
   onEdit():void {this.saveHandle?.schedule();}
   @HostListener('window:beforeunload') @HostListener('window:pagehide')
   flush():void {this.saveHandle?.flush();}
-  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.movementDialog=false;this.addingEffect=false;}
+  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.movementDialog=false;this.addingEffect=false;this.fatigueTableOpen=false;}
   save():void {if(this.character)this.storage.saveCharacter(this.character,'view-character');}
   editInBuilder():void {
     this.flush();if(this.storage.error)return;
@@ -111,12 +126,13 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   skillValue(skill:Skill):number {return skillTotal(this.character,skill,this.upgrade?this.draftStats:{},this.upgrade?(this.draftSkills.get(skill)||0):0);}
   oldSkillValue(skill:Skill):number {return skillTotal(this.character,skill);}
   indirectSkillDelta(skill:Skill):number {return this.skillValue(skill)-this.oldSkillValue(skill)-(this.draftSkills.get(skill)||0);}
+  /** Use the very same Skill instance and difficulty modal as in the Skills column. */
+  magicSkill(name:string):Skill|null {return findTraditionSkill(this.character,name);}
   relatedSkill(name:string):number|null {
-    const list=[...this.character.skills.skills,...(this.character.skills.specialized||[]),...(this.character.skills.extraProfessionalCultureSkills||[]),...(this.character.skills.extraProfessionalCareerSkills||[])];
-    if(this.character.skills.hobby)list.push(this.character.skills.hobby);
-    const skill=list.find(s=>s?.name===name);
+    const skill=this.magicSkill(name);
     return skill?this.skillValue(skill):null;
   }
+  openMagicSkill(name:string):void {this.activeSkill=this.magicSkill(name);}
   attr(key:'ap'|'healing'|'init'|'luck'|'expMod'):number {
     return attributeTotal(this.character,key,this.upgrade?this.draftStats:{});
   }
@@ -127,62 +143,63 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   get move(){return movementSummary(this.character);}
   get mpMax():number {return magicPointMaximum(this.character,this.upgrade?this.draftStats:{});}
   get currentMovement():number {return this.move.walking;}
+  get fatigueInitiativePenalty():number|null {return this.currentFatigueRule.initiative;}
+  get fatigueActionPointsPenalty():number|null {return this.currentFatigueRule.actionPoints;}
   get armourPenalty():number {return this.move.armourPenalty;}
   currentResource(key:'ap'|'luck'|'magicPoints',max:number):number {
     const value=this.character.currentValues?.[key];
-    return value!==''&&value!=null&&Number.isFinite(Number(value))?Number(value):max;
+    return value!==''&&value!=null&&Number.isFinite(Number(value))?Math.max(0,Math.min(max,Number(value))):max;
   }
   adjustResource(key:'ap'|'luck'|'magicPoints',delta:number,max:number):void {
     const next=Math.max(0,Math.min(max,this.currentResource(key,max)+delta));
     (this.character.currentValues ||= {})[key]=next;
   }
   get effects():SheetEffect[] {return this.character.companion?.effects||[];}
+  /** Previously saved gifts remain visible; new narrative effects use the regular effect editor. */
   get gifts(){return this.character.companion?.gifts||[];}
   removeEffect(id:string):void {companionState(this.character).effects=this.effects.filter(x=>x.id!==id);}
   addModifier():void {this.newModifiers.push({kind:'characteristic',key:'str',amount:1});}
   modifierOptions(kind:SheetModifier['kind']):{key:string;label:string}[] {
-    if(kind==='characteristic')return CHARACTERISTICS.map(x=>({key:x,label:x.toUpperCase()}));
-    if(kind==='attribute')return ATT_KEYS.map(x=>({key:x.key,label:x.name}));
-    const skills=[...this.character.skills.skills,...(this.character.skills.specialized||[]),...(this.character.skills.combatstyles||[])];
-    return [...new Set(skills.map(x=>x.name))].map(x=>({key:x,label:x}));
+    if(kind==='characteristic')return this.characteristicModifierOptions;
+    if(kind==='attribute')return this.attributeModifierOptions;
+    return this.skillModifierOptions;
   }
+  trackModifierOption(_index:number,option:{key:string}):string{return option.key;}
   setModifierKind(mod:SheetModifier,kind:SheetModifier['kind']):void {
     mod.kind=kind;mod.key=this.modifierOptions(kind)[0]?.key||'';
   }
+  setModifierKey(mod:SheetModifier,key:string):void {mod.key=key;}
   applyEffect():void {
-    if(!this.effectName.trim()||!this.newModifiers.length)return;
-    const effect:SheetEffect={id:Date.now().toString(),name:this.effectName.trim(),duration:this.effectDuration,
+    if(!this.effectName.trim())return;
+    const effect:SheetEffect={id:Date.now().toString(),name:this.effectName.trim(),
+      duration:this.effectDuration.trim(),description:this.effectDescription.trim(),
       modifiers:this.newModifiers.map(x=>({...x,amount:Number(x.amount)||0}))};
     companionState(this.character).effects=[...this.effects,effect];
     this.cancelEffect();
   }
-  cancelEffect():void {this.addingEffect=false;this.effectName='';this.effectDuration='';this.newModifiers=[];}
-  addGift():void {
-    if(!this.newGiftName.trim())return;
-    companionState(this.character).gifts=[...this.gifts,{id:Date.now().toString(),name:this.newGiftName.trim(),description:''}];
-    this.newGiftName='';
-  }
-  removeGift(id:string):void {companionState(this.character).gifts=this.gifts.filter(x=>x.id!==id);}
+  cancelEffect():void {this.addingEffect=false;this.effectName='';this.effectDuration='';this.effectDescription='';this.newModifiers=[];}
   setFatigue(value:string):void {this.character.fatigueLevel=value;}
-  get currentHp():number|string {const n=getCurrentHp(this.character,this.selectedLocation);return n===''?'—':n;}
+  get currentFatigueRule(){return fatigueRule(this.character);}
+  get canAct():boolean{return canAct(this.character);}
+  get currentHp():number {return displayedLocationHp(this.character,this.selectedLocation,this.upgrade?this.draftStats:{});}
   maxHp(key:HitLocation):number {return maxLocationHp(this.character,key,this.upgrade?this.draftStats:{});}
-  hp(key:HitLocation):number|string {const n=getCurrentHp(this.character,key);return n===''?'—':n;}
+  hp(key:HitLocation):number {return displayedLocationHp(this.character,key,this.upgrade?this.draftStats:{});}
   hpColour(key:HitLocation):string {
-    const max=this.maxHp(key),current=getCurrentHp(this.character,key);
-    if(current===''||current==null)return '#e6ebe4';
-    const n=Number(current);const wound=severity(n,max);
+    const max=this.maxHp(key),n=this.hp(key);const wound=severity(n,max);
     if(wound==='major')return '#864b60';if(wound==='serious')return '#d07d76';
     const t=Math.max(0,Math.min(1,n/max));
     return 'rgb('+[0,1,2].map(i=>Math.round([235,179,99][i]*(1-t)+[150,200,155][i]*t)).join(',')+')';
   }
   injuryMark(key:HitLocation):boolean {
-    const current=getCurrentHp(this.character,key);
-    return current!==''&&Number(current)<=0;
+    return this.hp(key)<=0;
   }
-  adjustHp(loc:HitLocation,amount:number):void {
-    const old=getCurrentHp(this.character,loc);
-    const start=old===''?this.maxHp(loc):Number(old);
-    setCurrentHp(this.character,loc,Math.min(this.maxHp(loc),start+amount));
+  /** Reject blank, fractional or otherwise invalid amounts rather than dealing accidental damage. */
+  get hpAmountValid():boolean {
+    return Number.isSafeInteger(this.hpAmount) && this.hpAmount>=1 && this.hpAmount<=999;
+  }
+  adjustSelectedHp(direction:-1|1):void {
+    if(!this.hpAmountValid)return;
+    changeLocationHp(this.character,this.selectedLocation,direction*this.hpAmount);
   }
   ap(loc:HitLocation):number|string {return this.character.equipment[loc]?.ap??0;}
   get injury():string {return this.character.companion?.injuries?.[this.selectedLocation]||'';}
@@ -238,7 +255,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     this.discardUpgrade();
   }
   difficultyTarget(multiplier:number):number {return this.activeSkill?Math.ceil(this.skillValue(this.activeSkill)*multiplier):0;}
-  stopOverlay(event:MouseEvent):void {if(event.target===event.currentTarget){this.activeSkill=null;this.movementDialog=false;}}
+  stopOverlay(event:MouseEvent):void {if(event.target===event.currentTarget){this.activeSkill=null;this.movementDialog=false;this.fatigueTableOpen=false;}}
   trackSkill(_index:number,s:Skill):Skill{return s;}
   trackLocation(_index:number,loc:LocationDisplay):HitLocation{return loc.key;}
 }

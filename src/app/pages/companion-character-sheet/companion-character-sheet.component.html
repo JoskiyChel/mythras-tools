@@ -83,7 +83,7 @@
             <div class="attribute-grid">
               <div class="attribute metric"><small>Damage Modifier</small><strong>{{damage}}</strong></div>
               <div class="attribute metric"><small>Experience Modifier</small><strong>{{attr('expMod') >= 0 ? '+' : ''}}{{attr('expMod')}}</strong></div>
-              <div class="attribute metric"><small>Initiative</small><strong>{{attr('init')}}</strong><small class="footnote">До поправок брони и усталости</small></div>
+              <div class="attribute metric"><small>Initiative</small><strong>{{canAct?attr('init'):'—'}}</strong><small class="footnote">Броня −{{armourPenalty}} · Усталость: {{fatigueInitiativePenalty===null?'нет действий':fatigueInitiativePenalty}}</small></div>
               <button class="attribute metric interactive" type="button" (click)="movementDialog=true">
                 <small>Movement <b>↗</b></small><strong>{{currentMovement}} м</strong><small class="footnote">Бег · спринт · прыжки</small>
               </button>
@@ -118,7 +118,16 @@
             <div class="location-editor">
               <div><strong>{{selectedLocation==='abdoment'?'Живот':selectedLocation==='rightArm'?'Правая рука':selectedLocation==='leftArm'?'Левая рука':selectedLocation==='rightLeg'?'Правая нога':selectedLocation==='leftLeg'?'Левая нога':selectedLocation==='head'?'Голова':'Грудь'}}</strong>
                 <small>{{currentHp}} / {{maxHp(selectedLocation)}} HP · AP {{ap(selectedLocation)}}</small></div>
-              <div class="control-pair"><button type="button" (click)="adjustHp(selectedLocation,-1)">− HP</button><button type="button" (click)="adjustHp(selectedLocation,1)">＋ HP</button></div>
+              <div class="hp-edit-controls">
+                <div class="control-pair">
+                  <button type="button" (click)="adjustSelectedHp(-1)" [disabled]="!hpAmountValid" [attr.aria-label]="'Нанести ' + hpAmount + ' урона: ' + selectedLocation">− HP</button>
+                  <button type="button" (click)="adjustSelectedHp(1)" [disabled]="!hpAmountValid" [attr.aria-label]="'Вылечить ' + hpAmount + ' HP: ' + selectedLocation">＋ HP</button>
+                </div>
+                <label class="hp-amount-label" for="companion-hp-amount">HP за нажатие
+                  <input id="companion-hp-amount" type="number" min="1" max="999" step="1" [(ngModel)]="hpAmount" [attr.aria-invalid]="!hpAmountValid" aria-describedby="companion-hp-amount-help"/>
+                </label>
+                <small class="hp-amount-help" id="companion-hp-amount-help" *ngIf="!hpAmountValid">Укажите целое число от 1 до 999.</small>
+              </div>
             </div>
             <label class="injury-control" *ngIf="injuryMark(selectedLocation)">
               Последствие травмы
@@ -129,44 +138,52 @@
           <!-- Effects column -->
           <div class="effects-zone">
             <div class="zone-title">Эффекты и состояния</div>
-            <div class="secondary-tabs">
-              <button type="button" [class.active]="effectsTab==='effects'" (click)="effectsTab='effects'">Эффекты</button>
-              <button type="button" [class.active]="effectsTab==='gifts'" (click)="effectsTab='gifts'">Дары</button>
+            <div class="fatigue">
+              <div class="flexline"><button class="fatigue-title-button" type="button" (click)="fatigueTableOpen=true" aria-label="Показать таблицу усталости">Усталость <span>ⓘ</span></button><span>{{character.fatigueLevel || 'Fresh'}}</span></div>
+              <select aria-label="Степень усталости" [ngModel]="character.fatigueLevel || 'Fresh'" (ngModelChange)="setFatigue($event)">
+                <option *ngFor="let level of fatigueLevels" [value]="level">{{level}}</option>
+              </select>
+              <div class="fatigue-current" aria-live="polite">
+                <span>Сложность: {{currentFatigueRule.skillGrade}}</span>
+                <span>Движение: {{currentFatigueRule.movement}}</span>
+                <span>Инициатива: {{currentFatigueRule.initiative===null?'Нет действий':currentFatigueRule.initiative}}</span>
+                <span>AP: {{currentFatigueRule.actionPoints===null?'Нет действий':currentFatigueRule.actionPoints}}</span>
+              </div>
+              <button class="fatigue-help-toggle" type="button" [attr.aria-expanded]="fatigueTableOpen" (click)="fatigueTableOpen=!fatigueTableOpen">
+                {{fatigueTableOpen?'Скрыть уровни усталости':'Что означает каждый уровень?'}} <span>{{fatigueTableOpen?'⌃':'⌄'}}</span>
+              </button>
+
             </div>
-            <ng-container *ngIf="effectsTab==='effects';else giftList">
-              <div class="fatigue">
-                <div class="flexline"><strong>Усталость</strong><span>{{character.fatigueLevel || 'Не задана'}}</span></div>
-                <select aria-label="Степень усталости" [ngModel]="character.fatigueLevel || ''" (ngModelChange)="setFatigue($event)">
-                  <option value="">Не задана</option><option *ngFor="let level of fatigueLevels" [value]="level">{{level}}</option>
+            <div class="effect-row" *ngFor="let effect of effects">
+              <div><strong>{{effect.name}}</strong><small *ngIf="effect.duration">Длительность: {{effect.duration}}</small>
+                <p class="effect-description" *ngIf="effect.description">{{effect.description}}</p>
+                <small *ngFor="let mod of effect.modifiers">{{mod.kind}}: {{mod.key}} {{mod.amount>0?'+':''}}{{mod.amount}}</small>
+              </div><button type="button" (click)="removeEffect(effect.id)" aria-label="Снять эффект">×</button>
+            </div>
+            <div class="effect-row old-gift" *ngFor="let gift of gifts">
+              <div><strong>{{gift.name}}</strong><small>Сохранённый дар</small><p *ngIf="gift.description" class="effect-description">{{gift.description}}</p></div>
+            </div>
+            <button class="inline-add" type="button" *ngIf="!addingEffect" (click)="addingEffect=true">＋ Добавить эффект, состояние или дар</button>
+            <div class="effect-create" *ngIf="addingEffect">
+              <label class="field-label">Название<input placeholder="Название эффекта" [(ngModel)]="effectName" aria-label="Название эффекта"></label>
+              <label class="field-label">Длительность<input placeholder="Время действия, 'постоянно' или пусто" [(ngModel)]="effectDuration" aria-label="Длительность эффекта"></label>
+              <label class="field-label">Описание действия
+                <textarea rows="3" [(ngModel)]="effectDescription" placeholder="Нарративный эффект, статус, дар или дополнительные правила…" aria-label="Описание эффекта"></textarea>
+              </label>
+              <div class="effect-modifier-heading">Модификаторы <span>(необязательно)</span></div>
+              <div class="modifier-row" *ngFor="let mod of newModifiers;let i=index">
+                <select [ngModel]="mod.kind" (ngModelChange)="setModifierKind(mod,$event)" [attr.aria-label]="'Тип модификатора '+(i+1)">
+                  <option value="characteristic">Характеристика</option><option value="skill">Навык</option><option value="attribute">Атрибут</option>
                 </select>
+                <select [ngModel]="mod.key" (ngModelChange)="setModifierKey(mod,$event)" [attr.aria-label]="'Цель модификатора '+(i+1)">
+                  <option *ngFor="let option of modifierOptions(mod.kind);trackBy:trackModifierOption" [value]="option.key">{{option.label}}</option>
+                </select>
+                <input type="number" [(ngModel)]="mod.amount" [attr.aria-label]="'Величина модификатора '+(i+1)">
+                <button type="button" (click)="newModifiers.splice(i,1)" aria-label="Удалить модификатор">×</button>
               </div>
-              <div class="effect-row" *ngFor="let effect of effects">
-                <div><strong>{{effect.name}}</strong><small>{{effect.duration}}</small>
-                  <small *ngFor="let mod of effect.modifiers">{{mod.kind}}: {{mod.key}} {{mod.amount>0?'+':''}}{{mod.amount}}</small>
-                </div><button type="button" (click)="removeEffect(effect.id)" aria-label="Снять эффект">×</button>
-              </div>
-              <button class="inline-add" type="button" *ngIf="!addingEffect" (click)="addingEffect=true;addModifier()">＋ Добавить эффект</button>
-              <div class="effect-create" *ngIf="addingEffect">
-                <input placeholder="Название эффекта" [(ngModel)]="effectName" aria-label="Название эффекта">
-                <input placeholder="Длительность" [(ngModel)]="effectDuration" aria-label="Длительность эффекта">
-                <div class="modifier-row" *ngFor="let mod of newModifiers;let i=index">
-                  <select [ngModel]="mod.kind" (ngModelChange)="setModifierKind(mod,$event)">
-                    <option value="characteristic">Характеристика</option><option value="skill">Навык</option><option value="attribute">Атрибут</option>
-                  </select>
-                  <select [(ngModel)]="mod.key"><option *ngFor="let option of modifierOptions(mod.kind)" [value]="option.key">{{option.label}}</option></select>
-                  <input type="number" [(ngModel)]="mod.amount" aria-label="Величина модификатора">
-                  <button type="button" (click)="newModifiers.splice(i,1)">×</button>
-                </div>
-                <button class="inline-add" type="button" (click)="addModifier()">＋ Модификатор</button>
-                <div class="flexline"><button class="quiet compact" type="button" (click)="cancelEffect()">Отмена</button><button class="primary compact" type="button" (click)="applyEffect()">Применить</button></div>
-              </div>
-            </ng-container>
-            <ng-template #giftList>
-              <div class="effect-row" *ngFor="let gift of gifts"><div><strong>{{gift.name}}</strong><small>{{gift.description}}</small></div>
-                <button type="button" (click)="removeGift(gift.id)" aria-label="Удалить дар">×</button></div>
-              <input class="gift-input" placeholder="Название дара" [(ngModel)]="newGiftName" aria-label="Название дара">
-              <button class="inline-add" type="button" (click)="addGift()">＋ Добавить дар</button>
-            </ng-template>
+              <button class="inline-add" type="button" (click)="addModifier()">＋ Модификатор</button>
+              <div class="flexline"><button class="quiet compact" type="button" (click)="cancelEffect()">Отмена</button><button class="primary compact" type="button" (click)="applyEffect()" [disabled]="!effectName.trim()">Сохранить эффект</button></div>
+            </div>
           </div>
         </div>
       </section>
@@ -205,7 +222,14 @@
             <div class="tab-intro"><div><h2>Магические дисциплины</h2><p>Карточки формируются из выбранных заклинаний персонажа.</p></div><button class="quiet" type="button" (click)="editInBuilder()">Редактировать магию</button></div>
             <div class="tradition-grid"><article class="tradition" *ngFor="let m of traditions">
               <div class="tradition-heading"><h3>{{m.title}}</h3><small>{{m.subtitle}}</small></div>
-              <div class="tradition-skills"><span *ngFor="let name of m.skills">{{name}}: {{relatedSkill(name) ?? '—'}}{{relatedSkill(name) !== null ? '%' : ''}}</span></div>
+              <div class="tradition-skills">
+                <button *ngFor="let name of m.skills" type="button" class="magic-skill-button"
+                  (click)="openMagicSkill(name)" [disabled]="!magicSkill(name)"
+                  [attr.aria-label]="'Показать сложности магического навыка ' + name">
+                  <span>{{name}}:</span> <strong>{{relatedSkill(name) ?? '—'}}{{relatedSkill(name) !== null ? '%' : ''}}</strong>
+                  <span class="magic-skill-arrow" *ngIf="magicSkill(name)" aria-hidden="true">↗</span>
+                </button>
+              </div>
               <div class="spell" *ngFor="let spell of m.spells;let i=index">
                 <button type="button" (click)="openedSpell=openedSpell===m.title+i?'':m.title+i">{{spell.name}} <span>{{openedSpell===m.title+i?'⌃':'⌄'}}</span></button>
                 <div class="spell-description" *ngIf="openedSpell===m.title+i"><small>{{spell.tags || ''}}</small><p>{{spell.description || 'Описание не содержится в сохранении.'}}</p></div>
@@ -262,6 +286,26 @@
         <div><span>Прыжок в высоту</span><strong>{{move.verticalJump | number:'1.0-2'}} м</strong></div>
       </div>
       <p class="calculation-explainer">Рост: {{move.heightMetres}} м · Athletics: {{move.athletics}}% · Штраф брони: {{move.armourPenalty}}. Это совместимые с прежним листом формулы; применение всех специальных правил движения требует дополнительной проверки.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Full-width fatigue reference: deliberately not restricted to the narrow effects column. -->
+<div class="overlay" *ngIf="fatigueTableOpen" (mousedown)="stopOverlay($event)">
+  <div class="dialog fatigue-dialog" role="dialog" aria-modal="true" aria-label="Уровни усталости">
+    <header><div><small>Mythras Core Rules, стр. 79</small><h2>Уровни усталости</h2></div><button type="button" (click)="fatigueTableOpen=false" aria-label="Закрыть">×</button></header>
+    <div class="dialog-body">
+              <div class="fatigue-table-scroll">
+                <table class="fatigue-table">
+                  <caption>Mythras Core Rules, стр. 79 — Fatigue Levels</caption>
+                  <thead><tr><th>Уровень</th><th>Навыки</th><th>Движение</th><th>Инициатива</th><th>AP</th><th>Восстановление</th></tr></thead>
+                  <tbody><tr *ngFor="let rule of fatigueRules" [class.active-fatigue]="rule.level===(character.fatigueLevel || 'Fresh')">
+                    <td>{{rule.level}}</td><td>{{rule.skillGrade}}</td><td>{{rule.movement}}</td>
+                    <td>{{rule.initiative===null?'Нет действий':rule.initiative}}</td><td>{{rule.actionPoints===null?'Нет действий':rule.actionPoints}}</td><td>{{rule.recovery}}</td>
+                  </tr></tbody>
+                </table>
+                <p class="fatigue-source">Время восстановления указано для физической усталости; применяются правила Healing Rate из книги.</p>
+              </div>
     </div>
   </div>
 </div>
