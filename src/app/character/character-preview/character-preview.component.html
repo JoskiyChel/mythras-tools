@@ -11,7 +11,7 @@
         </div>
         <div class="controls-wrap line app-action-row" *ngIf="load&&!loading">
             <button mat-flat-button (click)="refresh()"><mat-icon>refresh</mat-icon> Refresh PDF / Print View</button>
-            <button mat-flat-button routerLink="/view/responsive"><mat-icon>view_sidebar</mat-icon> Open Responsive Viewer</button>
+            <button mat-flat-button routerLink="/view/companion"><mat-icon>view_sidebar</mat-icon> Открыть лист персонажа</button>
             <a mat-flat-button [href]="generateDownloadJsonUri()"
                 [download]="character.name+'.json'"><mat-icon>download</mat-icon> Download Character</a>
             <button mat-stroked-button (click)="fitToScreen=!fitToScreen">{{fitToScreen ? 'Actual size' : 'Fit to screen'}}</button>
@@ -23,7 +23,7 @@
         </div>
         <div class="controls-wrap line app-action-row" *ngIf="!load&&!loading">
             <button mat-flat-button (click)="load=true"><mat-icon>refresh</mat-icon> Open PDF / Print View</button>
-            <button mat-flat-button routerLink="/view/responsive"><mat-icon>view_sidebar</mat-icon> Open Responsive Viewer</button>
+            <button mat-flat-button routerLink="/view/companion"><mat-icon>view_sidebar</mat-icon> Открыть лист персонажа</button>
             <button class="back-button" *ngIf="hideDisclaimer" mat-raised-button color="accent" routerLink="/menu">Back to
                 Main Menu</button>
         </div>

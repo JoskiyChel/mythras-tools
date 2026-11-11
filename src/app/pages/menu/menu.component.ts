@@ -30,7 +30,7 @@ export class MenuComponent {
         this.storage.setJson(edit ? 'creation-character' : 'view-character', character);
         if (edit)
             this.storage.setRaw('creation-state', 0);
-        this.router.navigate([edit ? '/character-creation' : '/view/responsive']);
+        this.router.navigate([edit ? '/character-creation' : '/view/companion']);
     }
     download(character: Character): void { downloadJson(character, (character.name || 'character') + '.json'); }
     duplicate(character: Character): void { const copy = JSON.parse(JSON.stringify(character)); copy.id = uuidv4(); copy.name = (copy.name || 'Unnamed character') + ' (copy)'; this.storage.saveCharacter(copy); this.refresh(); this.message = 'Character duplicated.'; }

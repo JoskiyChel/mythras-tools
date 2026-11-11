@@ -41,7 +41,7 @@ export class LoadCharacterComponent implements ModalInnerContent, OnInit {
     switch (this.action) {
       case 'pdf': {
         localStorage['view-character'] = localStorage['character-' + id];
-        this.router.navigate(['/view/responsive']);
+        this.router.navigate(['/view/companion']);
         break;
       }
       case 'creation': {
@@ -56,7 +56,7 @@ export class LoadCharacterComponent implements ModalInnerContent, OnInit {
   loadNew(){
     let character = new Character();
     localStorage['view-character'] = JSON.stringify(character);
-    this.router.navigate(['/view/responsive']);
+    this.router.navigate(['/view/companion']);
     this.dialogRef.close("Loaded " + character.id);
   }
 

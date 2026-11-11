@@ -245,7 +245,8 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     // Permanent advancements are saved into native Mythras Tools properties.
     for(const key of CHARACTERISTICS){
       const delta=this.draftStats[key]||0;
-      this.character.skills[key]+=delta;
+      if(!delta)continue;
+      this.character.skills[key]=(Number(this.character.skills[key])||0)+delta;
       const manual=this.character.currentValues?.[key];
       if(delta && manual!=='' && manual!==undefined && manual!==null && Number.isFinite(Number(manual))){
         (this.character.currentValues ||= {})[key]=Number(manual)+delta;

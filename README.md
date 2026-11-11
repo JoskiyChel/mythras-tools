@@ -1,48 +1,77 @@
-# Mythras Tools
+# Mythras Tools — Mythras Companion
 
-A character workshop and table companion for Mythras: character creation, responsive sheets, PDF printing, a character library, combat flow and reference browsers. The parchment and purple theme is retained, and existing character JSON saves remain supported.
+Форк открытого проекта [Mythras Tools](https://github.com/Tsinwntas/mythras-tools) автора **Tsinwntas**. Репозиторий форка: [JoskiyChel/mythras-tools](https://github.com/JoskiyChel/mythras-tools).
 
-## Run locally
+Приложение помогает создавать персонажей и вести игру по Mythras: конструктор, библиотека персонажей, игровой лист, PDF-печать, боевые инструменты и справочники правил. В форке основным игровым листом стал **Mythras Companion**. Конструктор и лист используют общую модель `Character` и существующее хранение в браузере; переносить персонажа между отдельными приложениями не требуется.
+
+## Игровой лист
+
+Кнопка **Open sheet**, просмотр из конструктора и загрузка персонажа сразу открывают Companion (`#/view/companion`). Старые ссылки `#/view/responsive` перенаправляются на него. PDF-представление по-прежнему доступно через **PDF / Печать**.
+
+Слева находятся навыки и режим прокачки. Справа сверху — характеристики и атрибуты, семь локаций тела с HP/AP и эффекты с усталостью. Нижняя панель содержит пять вкладок: **Боевой стиль и оружие**, **Магия**, **Броня**, **Снаряжение**, **Игровые заметки**. Магические карточки раскрываются независимо; магические навыки открывают общее окно сложностей.
+
+HP изменяются на выбранную величину от 1 до 999 за нажатие. Урон может опускать HP ниже нуля, лечение ограничено максимумом. Травмы хранятся отдельно. Оружие, броня и заклинания редактируются через существующий конструктор. Формулы расширенного движения и прыжков ещё требуют отдельной сверки с книгой правил.
+
+## Локальный запуск
+
+Нужны Node.js 18 и npm 9, совместимые с используемыми Angular 15 и Angular CLI 16. В проверенной облачной среде используются Node.js 18.20.8 и npm 9.9.4.
 
 ```sh
-npm install
+npm ci
 npm start
 ```
 
-Open `http://localhost:4200/`. Characters autosave in this browser. Use the library's **Back up library** or an individual **Download JSON** action to keep an external copy.
+Откройте `http://localhost:4200/`. Персонажи автоматически сохраняются в этом браузере. Кнопки **Back up library** в библиотеке и **Сохранить JSON** на листе создают внешнюю резервную копию. Существующие JSON, библиотечные резервные копии и пользовательские поля поддерживаются.
 
-The responsive sheet opens on **Play**, with manual current HP/points, fatigue and session notes. **Sections** stays within reach while scrolling; **Skills** and **Magic** have search, and weapon cards expose their values and rule links without sideways scrolling. **Sheet tools** contains editing, printing and JSON backup. Saves are local to each browser/device; transfer a downloaded JSON through the character library when switching devices.
+Сохранения привязаны к браузеру, устройству и адресу сайта. Они не синхронизируются автоматически. При переходе с оригинального сайта на сайт форка сначала скачайте JSON или резервную копию библиотеки и импортируйте её на новом сайте.
 
-## Install on a phone or tablet
-
-On the published HTTPS site, choose **Install app** from the main menu. Supporting browsers offer an install button; otherwise use the browser's **Install app / Add to Home screen** action. On iPhone/iPad, open Safari's Share menu and choose **Add to Home Screen** (keep **Open as Web App** enabled when offered).
-
-Android/Chrome normally retains the same browser's saved characters. An iPhone/iPad home-screen app has separate storage: use **Back up before installing**, then **Import JSON** inside the installed app. Backups also include draft-only legacy characters. Installing does not synchronize devices or browsers.
-
-Wait for **Ready offline** before relying on offline access. The installed app caches character creation, sheets, PDF assets and references, including fonts/icons. Available updates can be applied from **Reload to update** in the main menu; updates do not erase character saves. Keep JSON backups for browser-data clearing or device changes.
-
-## Build for GitHub Pages
+## Проверки
 
 ```sh
-npm run build:pages
-```
-
-This single command works in Windows PowerShell/Command Prompt, macOS and Linux, without Bash. It builds into `docs/` using relative asset paths, creates `404.html`, and prepares offline support. Then commit and push, including `docs/`. The default works under `/mythras-tools/` as well as a custom domain. An explicit base path is also supported: `npm run build:pages -- /mythras-tools/`. Hash routing is retained.
-
-`bash build.sh` remains available and runs the same build.
-
-For this repository, the published app is `https://tsinwntas.github.io/mythras-tools/`; links such as `#/menu` and `#/combat` remain unchanged. The manifest and service worker stay scoped to `/mythras-tools/`, leaving the parent GitHub Pages site and sibling repositories outside the app's control.
-
-The build also generates `sw.js` with a versioned offline asset list. `npm run build` performs the same preparation through its `postbuild` script. If invoking `ng build` directly, run `node scripts/prepare-pwa.cjs <output-folder>` afterwards to enable offline installation support.
-
-`npm run build` produces a normal production build in `dist/mythras-tools/`.
-
-## Check save compatibility
-
-```sh
+npm run build
 npm run test:compat
 ```
 
-This runs the focused compatibility and save-safety tests with ChromeHeadless. Set `CHROME_BIN` if Chrome is not discovered. `npm test` runs the project's full existing test setup.
+`npm run build` создаёт production-сборку в `dist/mythras-tools/` и подготавливает offline-файлы PWA. `test:compat` запускает в ChromeHeadless тесты совместимости сохранений, исходных расчётов и нового листа Companion, включая прокачку. Если Chrome/Chromium не обнаруживается автоматически, задайте `CHROME_BIN`.
 
-See [PROJECT-NOTES.md](PROJECT-NOTES.md) for the save schema, recovery behavior, reference-data map, creation-rule decisions, customization structures, PDF sizing and validation details.
+Полный существующий набор тестов можно запустить отдельно:
+
+```sh
+npm test -- --watch=false --browsers=ChromeHeadless
+```
+
+## Публикация через GitHub Pages
+
+Основная ветка этого форка называется **`master`**.
+
+```sh
+npm ci
+npm run test:compat
+npm run build:pages
+```
+
+Последняя команда создаёт сайт в `docs/`, файл `404.html` и service worker. Команда работает в Windows, macOS и Linux. Сохраните изменения, включая `docs/`, и отправьте их в `master`.
+
+В GitHub откройте **Settings → Pages** и выберите **Deploy from a branch**, ветку **master**, каталог **/docs**. После успешного развёртывания адрес форка: **https://joskiychel.github.io/mythras-tools/**.
+
+По умолчанию используются относительные пути, подходящие для `/mythras-tools/` и собственного домена. Явный базовый путь задаётся так:
+
+```sh
+npm run build:pages -- /mythras-tools/
+```
+
+`bash build.sh` запускает ту же сборку. Hash-маршруты, например `#/menu` и `#/view/companion`, сохраняются. При прямом вызове `ng build` после него нужно выполнить `node scripts/prepare-pwa.cjs <каталог-сборки>` для подготовки offline-режима.
+
+## Установка на телефон и работа без сети
+
+На опубликованном HTTPS-сайте нажмите **Install app** в главном меню либо используйте команду установки приложения в браузере. На iPhone/iPad: Safari → **Поделиться → На экран «Домой»**, с включённым открытием как веб-приложение, если такой переключатель предлагается.
+
+Android/Chrome обычно использует сохранения того же браузера. Приложение с домашнего экрана iPhone/iPad имеет отдельное хранилище: сначала выполните **Back up before installing**, затем импортируйте JSON в установленном приложении.
+
+Перед игрой без сети дождитесь **Ready offline**. Приложение кэширует конструктор, лист, PDF-ресурсы, справочники, шрифты и иконки. Новую версию можно применить через **Reload to update**. Обновление не должно удалять персонажей; резервные копии всё равно нужны на случай очистки данных браузера.
+
+## Благодарности и материалы
+
+Исходный конструктор и основа приложения разработаны в [Mythras Tools от Tsinwntas](https://github.com/Tsinwntas/mythras-tools); этот репозиторий развивает их в отдельном форке с листом Mythras Companion.
+
+Mythras и официальные игровые материалы принадлежат **The Design Mechanism**. Поддержать авторов и приобрести книги можно на [thedesignmechanism.com](https://thedesignmechanism.com/). В приложении также используются фанатские материалы [Tools From Pavis](http://toolsfrompavis.com/) и [Notes From Pavis](https://notesfrompavis.blog/). Исходные уведомления об авторах и правах сохранены в приложении.

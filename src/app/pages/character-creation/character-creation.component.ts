@@ -232,7 +232,7 @@ export class CharacterCreationComponent
     this.flushSave();
     if (this.storage.error) return;
     this.storage.setJson('view-character', this.character);
-    this.router.navigate(['/view/responsive']);
+    this.router.navigate(['/view/companion']);
   }
 
   download(): void {
