@@ -5,7 +5,13 @@ import { ResponsiveCharacterViewerComponent } from 'src/app/pages/responsive-cha
 
 const routes: Routes = [
   { path: '', component: ViewCharacterComponent },
+  // The original responsive sheet remains intact while the new one is tested.
   { path: 'responsive', component: ResponsiveCharacterViewerComponent },
+  {
+    path: 'companion',
+    loadComponent: () => import('src/app/pages/companion-character-sheet/companion-character-sheet.component')
+      .then(m => m.CompanionCharacterSheetComponent),
+  },
 ];
 
 @NgModule({

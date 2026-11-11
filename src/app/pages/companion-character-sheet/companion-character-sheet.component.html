@@ -1,0 +1,267 @@
+<div class="companion-shell" *ngIf="character">
+  <header class="masthead">
+    <div class="masthead-brand">✦ MYTHRAS <small>COMPANION</small></div>
+    <div class="masthead-tools">
+      <a routerLink="/view/responsive">Старый лист</a>
+      <button type="button" (click)="editInBuilder()">Конструктор</button>
+      <button type="button" (click)="exportJson()">Сохранить JSON</button>
+    </div>
+  </header>
+  <div class="save-status" role="status">{{storage.error || 'Изменения сохраняются автоматически в этом браузере.'}}</div>
+  <div class="sheet-layout">
+    <!-- Skills column: no sticky duplicate of Resistances -->
+    <aside class="card skills-panel">
+      <div class="card-title">
+        <h2>Навыки</h2>
+        <div class="inline-actions" *ngIf="!upgrade"><button class="primary compact" type="button" (click)="beginUpgrade()">＋ Прокачка</button></div>
+        <div class="inline-actions" *ngIf="upgrade">
+          <button class="quiet compact" type="button" (click)="discardUpgrade()">Отмена</button>
+          <button class="primary compact" type="button" [disabled]="!hasUpgrade" (click)="applyUpgrade()">Применить</button>
+        </div>
+      </div>
+      <div class="panel-content">
+        <p class="minor-note" *ngIf="upgrade">Зелёный/красный — прямое изменение, синий ↗ — пересчёт от характеристик.</p>
+        <input class="search-field" type="search" [(ngModel)]="query" aria-label="Поиск навыка" placeholder="Поиск навыка…">
+        <section class="skill-group" *ngFor="let group of groups">
+          <h3 *ngIf="group.skills.length">{{group.name}}</h3>
+          <div class="skill-row" *ngFor="let skill of group.skills; trackBy:trackSkill">
+            <button class="skill-name" type="button" (click)="activeSkill=skill" [title]="skill.name">{{skill.name}}</button>
+            <div class="skill-value">
+              <ng-container *ngIf="upgrade">
+                <span class="value-old">{{oldSkillValue(skill)}}</span>
+                <span class="change-value" [class.negative]="(draftSkills.get(skill) || 0) < 0" *ngIf="draftSkills.get(skill)">
+                  {{(draftSkills.get(skill) || 0) > 0 ? '+' : ''}}{{draftSkills.get(skill)}}
+                </span>
+                <span class="change-indirect" *ngIf="indirectSkillDelta(skill)">↗ {{indirectSkillDelta(skill) > 0 ? '+' : ''}}{{indirectSkillDelta(skill)}}</span>
+                <button class="step" type="button" (click)="alterSkill(skill,-1)" aria-label="Уменьшить навык">−</button>
+                <button class="step" type="button" (click)="alterSkill(skill,1)" aria-label="Повысить навык">+</button>
+              </ng-container>
+              <button class="percent" type="button" (click)="activeSkill=skill">{{skillValue(skill)}}%</button>
+            </div>
+          </div>
+        </section>
+        <section class="skill-group" *ngIf="visiblePassions.length">
+          <h3>Страсти</h3>
+          <div class="skill-row" *ngFor="let passion of visiblePassions">
+            <span class="skill-name readonly">{{passion.passion || 'Не задана'}}</span>
+            <span class="value-old">{{passion.modifierNumber != null ? passion.modifierNumber + '%' : (passion.modifier || '—')}}</span>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <main class="companion-main">
+      <section class="card character-card">
+        <div class="card-title character-header">
+          <div>
+            <h1>{{character.name || 'Безымянный персонаж'}}</h1>
+            <p>{{character.species || 'Вид не указан'}} · {{character.culture || 'Культура не указана'}} · {{character.career || 'Карьера не указана'}}</p>
+          </div>
+          <span class="year-label">MYTHRAS CHARACTER SHEET</span>
+        </div>
+        <div class="character-columns">
+          <!-- Characteristic/attribute column -->
+          <div class="summary-zone">
+            <div class="zone-title">Характеристики</div>
+            <div class="characteristics">
+              <div class="characteristic" *ngFor="let key of characteristics">
+                <span>{{key | uppercase}}</span>
+                <strong [class.highlight-result]="upgrade && draftStats[key]">{{charValue(key)}}</strong>
+                <div class="upgrade-edit" *ngIf="upgrade">
+                  <button type="button" (click)="alterStat(key,-1)">−</button>
+                  <em [class.negative]="(draftStats[key] || 0) < 0">{{draftStats[key] || '·'}}</em>
+                  <button type="button" (click)="alterStat(key,1)">+</button>
+                </div>
+              </div>
+            </div>
+            <div class="identity-mini">
+              <label>Frame <input [(ngModel)]="character.frame" aria-label="Frame"></label>
+              <label>Рост, см <input type="number" [(ngModel)]="character.height" aria-label="Рост в сантиметрах"></label>
+              <label>Вес, кг <input type="number" [(ngModel)]="character.weight" aria-label="Вес в килограммах"></label>
+            </div>
+            <div class="zone-title with-margin">Атрибуты</div>
+            <div class="attribute-grid">
+              <div class="attribute metric"><small>Damage Modifier</small><strong>{{damage}}</strong></div>
+              <div class="attribute metric"><small>Experience Modifier</small><strong>{{attr('expMod') >= 0 ? '+' : ''}}{{attr('expMod')}}</strong></div>
+              <div class="attribute metric"><small>Initiative</small><strong>{{attr('init')}}</strong><small class="footnote">До поправок брони и усталости</small></div>
+              <button class="attribute metric interactive" type="button" (click)="movementDialog=true">
+                <small>Movement <b>↗</b></small><strong>{{currentMovement}} м</strong><small class="footnote">Бег · спринт · прыжки</small>
+              </button>
+            </div>
+            <div class="resource-grid">
+              <div class="resource"><small>Action Points</small><strong>{{currentResource('ap',attr('ap'))}}<span>/{{attr('ap')}}</span></strong>
+                <div class="resource-controls"><button type="button" (click)="adjustResource('ap',-1,attr('ap'))">−</button><button type="button" (click)="adjustResource('ap',1,attr('ap'))">＋</button></div></div>
+              <div class="resource"><small>Magic Points</small><strong>{{currentResource('magicPoints',mpMax)}}<span>/{{mpMax}}</span></strong>
+                <div class="resource-controls"><button type="button" (click)="adjustResource('magicPoints',-1,mpMax)">−</button><button type="button" (click)="adjustResource('magicPoints',1,mpMax)">＋</button></div></div>
+              <div class="resource"><small>Luck Points</small><strong>{{currentResource('luck',attr('luck'))}}<span>/{{attr('luck')}}</span></strong>
+                <div class="resource-controls"><button type="button" (click)="adjustResource('luck',-1,attr('luck'))">−</button><button type="button" (click)="adjustResource('luck',1,attr('luck'))">＋</button></div></div>
+            </div>
+          </div>
+
+          <!-- Body illustration and current HP -->
+          <div class="body-zone">
+            <div class="zone-title">Локации попаданий <span>HP / AP</span></div>
+            <svg class="body-svg" viewBox="0 0 330 382" aria-label="Семь локаций тела">
+              <g *ngFor="let loc of locations;trackBy:trackLocation">
+                <path class="body-location" [class.selected]="selectedLocation===loc.key" [attr.d]="loc.path" [attr.fill]="hpColour(loc.key)"
+                  (click)="selectedLocation=loc.key" (keydown)="onSvgKey($event,loc.key)" tabindex="0" role="button"
+                  [attr.aria-label]="loc.label + ': HP ' + hp(loc.key) + ' / ' + maxHp(loc.key)"/>
+                <path *ngIf="injuryMark(loc.key)" class="wound-mark" [attr.d]="'M'+(loc.centerX-10)+' '+(loc.centerY-16)+'l11 10 -6 9 13 6'"/>
+                <rect class="body-value-backing" [attr.x]="loc.centerX-19" [attr.y]="loc.centerY-13" width="38" height="29" rx="5"/>
+                <text class="body-hp" [attr.x]="loc.centerX" [attr.y]="loc.centerY">{{hp(loc.key)}}/{{maxHp(loc.key)}}</text>
+                <text class="body-ap" [attr.x]="loc.centerX" [attr.y]="loc.centerY+12">AP {{ap(loc.key)}}</text>
+                <text class="body-label" [attr.x]="loc.labelX" [attr.y]="loc.labelY">{{loc.label}}</text>
+                <text class="body-roll" [attr.x]="loc.labelX" [attr.y]="loc.labelY+13">d20: {{loc.roll}}</text>
+              </g>
+            </svg>
+            <div class="healing-rate"><span>Скорость лечения</span><strong>{{attr('healing')}}</strong></div>
+            <div class="location-editor">
+              <div><strong>{{selectedLocation==='abdoment'?'Живот':selectedLocation==='rightArm'?'Правая рука':selectedLocation==='leftArm'?'Левая рука':selectedLocation==='rightLeg'?'Правая нога':selectedLocation==='leftLeg'?'Левая нога':selectedLocation==='head'?'Голова':'Грудь'}}</strong>
+                <small>{{currentHp}} / {{maxHp(selectedLocation)}} HP · AP {{ap(selectedLocation)}}</small></div>
+              <div class="control-pair"><button type="button" (click)="adjustHp(selectedLocation,-1)">− HP</button><button type="button" (click)="adjustHp(selectedLocation,1)">＋ HP</button></div>
+            </div>
+            <label class="injury-control" *ngIf="injuryMark(selectedLocation)">
+              Последствие травмы
+              <select [(ngModel)]="injury"><option value="">Не указано</option><option value="Отсечена">Отсечена</option><option value="Раздроблена">Раздроблена</option><option value="Пронзена">Пронзена</option></select>
+            </label>
+          </div>
+
+          <!-- Effects column -->
+          <div class="effects-zone">
+            <div class="zone-title">Эффекты и состояния</div>
+            <div class="secondary-tabs">
+              <button type="button" [class.active]="effectsTab==='effects'" (click)="effectsTab='effects'">Эффекты</button>
+              <button type="button" [class.active]="effectsTab==='gifts'" (click)="effectsTab='gifts'">Дары</button>
+            </div>
+            <ng-container *ngIf="effectsTab==='effects';else giftList">
+              <div class="fatigue">
+                <div class="flexline"><strong>Усталость</strong><span>{{character.fatigueLevel || 'Не задана'}}</span></div>
+                <select aria-label="Степень усталости" [ngModel]="character.fatigueLevel || ''" (ngModelChange)="setFatigue($event)">
+                  <option value="">Не задана</option><option *ngFor="let level of fatigueLevels" [value]="level">{{level}}</option>
+                </select>
+              </div>
+              <div class="effect-row" *ngFor="let effect of effects">
+                <div><strong>{{effect.name}}</strong><small>{{effect.duration}}</small>
+                  <small *ngFor="let mod of effect.modifiers">{{mod.kind}}: {{mod.key}} {{mod.amount>0?'+':''}}{{mod.amount}}</small>
+                </div><button type="button" (click)="removeEffect(effect.id)" aria-label="Снять эффект">×</button>
+              </div>
+              <button class="inline-add" type="button" *ngIf="!addingEffect" (click)="addingEffect=true;addModifier()">＋ Добавить эффект</button>
+              <div class="effect-create" *ngIf="addingEffect">
+                <input placeholder="Название эффекта" [(ngModel)]="effectName" aria-label="Название эффекта">
+                <input placeholder="Длительность" [(ngModel)]="effectDuration" aria-label="Длительность эффекта">
+                <div class="modifier-row" *ngFor="let mod of newModifiers;let i=index">
+                  <select [ngModel]="mod.kind" (ngModelChange)="setModifierKind(mod,$event)">
+                    <option value="characteristic">Характеристика</option><option value="skill">Навык</option><option value="attribute">Атрибут</option>
+                  </select>
+                  <select [(ngModel)]="mod.key"><option *ngFor="let option of modifierOptions(mod.kind)" [value]="option.key">{{option.label}}</option></select>
+                  <input type="number" [(ngModel)]="mod.amount" aria-label="Величина модификатора">
+                  <button type="button" (click)="newModifiers.splice(i,1)">×</button>
+                </div>
+                <button class="inline-add" type="button" (click)="addModifier()">＋ Модификатор</button>
+                <div class="flexline"><button class="quiet compact" type="button" (click)="cancelEffect()">Отмена</button><button class="primary compact" type="button" (click)="applyEffect()">Применить</button></div>
+              </div>
+            </ng-container>
+            <ng-template #giftList>
+              <div class="effect-row" *ngFor="let gift of gifts"><div><strong>{{gift.name}}</strong><small>{{gift.description}}</small></div>
+                <button type="button" (click)="removeGift(gift.id)" aria-label="Удалить дар">×</button></div>
+              <input class="gift-input" placeholder="Название дара" [(ngModel)]="newGiftName" aria-label="Название дара">
+              <button class="inline-add" type="button" (click)="addGift()">＋ Добавить дар</button>
+            </ng-template>
+          </div>
+        </div>
+      </section>
+
+      <!-- Single tabbed area for equipment, combat, magic and notes -->
+      <section class="card tabbed-panel">
+        <div class="tab-header">
+          <nav class="tab-strip" aria-label="Разделы персонажа">
+            <button type="button" *ngFor="let tab of tabs" (click)="activeTab=tab.key" [class.active]="activeTab===tab.key">{{tab.label}}</button>
+          </nav>
+        </div>
+        <div class="tab-body" [ngSwitch]="activeTab">
+          <section *ngSwitchCase="'weapons'">
+            <div class="tab-intro"><div><h2>Боевые стили и оружие</h2><p>Оружие из конструктора и подробные игровые характеристики.</p></div><button class="quiet" type="button" (click)="editInBuilder()">Добавить в конструкторе</button></div>
+            <div class="style-chips"><span *ngFor="let style of styles" class="style-chip">{{style.name}} · {{skillValue(style)}}%</span><span *ngIf="!styles.length" class="empty-state">Боевые стили пока не выбраны.</span></div>
+            <div class="table-scroll" *ngIf="allWeaponRows.length">
+              <table class="data-table"><thead><tr><th>Оружие / щит</th><th>Урон</th><th>Size</th><th>Reach / Range</th><th>AP / HP</th><th>ENC</th><th></th></tr></thead>
+                <tbody><ng-container *ngFor="let w of allWeaponRows;let index=index">
+                  <tr class="clickable-row" (click)="openedWeapon=openedWeapon===index?-1:index">
+                    <td><strong>{{w.name}}</strong><small>{{weaponType(w)}}</small></td><td>{{weaponDamage(w)}}</td><td>{{w.size || '—'}}</td>
+                    <td>{{w.range || w.reach || '—'}}</td><td>{{w.ap ?? '—'}} / {{w.hp ?? '—'}}</td><td>{{w.enc ?? '—'}}</td><td>{{openedWeapon===index?'⌃':'⌄'}}</td>
+                  </tr>
+                  <tr *ngIf="openedWeapon===index" class="expanded-row"><td colspan="7"><div class="weapon-extra">
+                    <p><strong>Особые эффекты:</strong> {{w.offensiveSkills || '—'}} / {{w.defensiveSkills || '—'}}</p>
+                    <p><strong>Load:</strong> {{w.loadTime || '—'}} · <strong>Traits:</strong>
+                      <span *ngFor="let trait of w.traits"> {{trait.name}} ({{trait.description}}) </span>
+                    </p>
+                    <label class="inline-checkbox"><input type="checkbox" [(ngModel)]="w.equipped"> В руках / экипировано</label>
+                  </div></td></tr>
+                </ng-container></tbody>
+              </table>
+            </div>
+            <p class="empty-state" *ngIf="!allWeaponRows.length">Нет оружия. Добавьте его в конструкторе — оно появится здесь автоматически.</p>
+          </section>
+          <section *ngSwitchCase="'magic'">
+            <div class="tab-intro"><div><h2>Магические дисциплины</h2><p>Карточки формируются из выбранных заклинаний персонажа.</p></div><button class="quiet" type="button" (click)="editInBuilder()">Редактировать магию</button></div>
+            <div class="tradition-grid"><article class="tradition" *ngFor="let m of traditions">
+              <div class="tradition-heading"><h3>{{m.title}}</h3><small>{{m.subtitle}}</small></div>
+              <div class="tradition-skills"><span *ngFor="let name of m.skills">{{name}}: {{relatedSkill(name) ?? '—'}}{{relatedSkill(name) !== null ? '%' : ''}}</span></div>
+              <div class="spell" *ngFor="let spell of m.spells;let i=index">
+                <button type="button" (click)="openedSpell=openedSpell===m.title+i?'':m.title+i">{{spell.name}} <span>{{openedSpell===m.title+i?'⌃':'⌄'}}</span></button>
+                <div class="spell-description" *ngIf="openedSpell===m.title+i"><small>{{spell.tags || ''}}</small><p>{{spell.description || 'Описание не содержится в сохранении.'}}</p></div>
+              </div>
+            </article></div>
+            <p *ngIf="!traditions.length" class="empty-state">Персонаж пока не владеет заклинаниями или магическими способностями.</p>
+          </section>
+          <section *ngSwitchCase="'armour'">
+            <div class="tab-intro"><div><h2>Надетая броня</h2><p>Из Mythras Tools: броня хранится отдельно для каждой локации.</p></div><button class="quiet" type="button" (click)="editInBuilder()">Изменить в конструкторе</button></div>
+            <div class="armour-summary"><div><small>Штраф брони</small><strong>{{armourPenalty}}</strong></div><div><small>Источник</small><strong>Equipment</strong></div></div>
+            <div class="armour-list"><div class="armour-row" *ngFor="let loc of equipmentSlots">
+              <div><strong>{{loc.label}}</strong><small>{{character.equipment[loc.key].type || 'Без брони'}} · {{character.equipment[loc.key].material || ''}}</small></div>
+              <span class="armour-ap" [class.empty]="!ap(loc.key)">AP {{ap(loc.key)}}</span><span>ENC {{character.equipment[loc.key].enc || 0}}</span>
+            </div></div>
+          </section>
+          <section *ngSwitchCase="'equipment'">
+            <div class="tab-intro"><div><h2>Снаряжение</h2><p>Отдельно от экипированной брони и оружия.</p></div><button class="quiet" type="button" (click)="editInBuilder()">Добавить предмет</button></div>
+            <div class="equipment-list"><div *ngFor="let item of character.equipment.items" class="equipment-item">
+              <strong>{{item.name || 'Без названия'}}</strong><span>Количество: {{item.quantity || 1}}</span><span>ENC: {{item.enc || 0}}</span><p *ngIf="item.description">{{item.description}}</p>
+            </div></div>
+            <p class="empty-state" *ngIf="!character.equipment.items.length">Снаряжение не добавлено.</p>
+            <label class="notes-label">Заметки о снаряжении <textarea rows="5" [(ngModel)]="equipmentNotes" placeholder="Что находится в сумке, где оставлено, что требуется приобрести…"></textarea></label>
+          </section>
+          <section *ngSwitchCase="'notes'">
+            <div class="tab-intro"><div><h2>Игровые заметки</h2><p>Сохраняются в исходном поле sessionNotes персонажа.</p></div></div>
+            <label class="notes-label">События, обещания, имена и планы <textarea rows="10" [(ngModel)]="sessionNotes" placeholder="Заметки из игры…"></textarea></label>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- Skill difficulty modal, closed by backdrop, button and Escape -->
+<div class="overlay" *ngIf="activeSkill" (mousedown)="stopOverlay($event)">
+  <div class="dialog" role="dialog" aria-modal="true" aria-label="Сложности навыка">
+    <header><div><small>Проверка навыка</small><h2>{{activeSkill.name}}</h2></div><button type="button" (click)="activeSkill=null" aria-label="Закрыть">×</button></header>
+    <div class="dialog-body"><div class="dialog-result"><span>Текущее значение</span><strong>{{skillValue(activeSkill)}}%</strong></div>
+      <div class="difficulty-grid"><div *ngFor="let difficulty of difficulties"><span>{{difficulty.name}}</span><strong>{{difficultyTarget(difficulty.multiplier)}}%</strong></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Movement panel uses the same calculation baseline as the original viewer -->
+<div class="overlay" *ngIf="movementDialog" (mousedown)="stopOverlay($event)">
+  <div class="dialog" role="dialog" aria-modal="true" aria-label="Движение и прыжки">
+    <header><div><small>Расчёт от Athletics, роста, движения и штрафа брони</small><h2>Movement</h2></div><button type="button" (click)="movementDialog=false" aria-label="Закрыть">×</button></header>
+    <div class="dialog-body">
+      <div class="difficulty-grid movement-stats">
+        <div><span>Ходьба</span><strong>{{move.walking | number:'1.0-2'}} м</strong></div>
+        <div><span>Бег</span><strong>{{move.running | number:'1.0-2'}} м</strong></div>
+        <div><span>Спринт</span><strong>{{move.sprinting | number:'1.0-2'}} м</strong></div>
+        <div><span>Прыжок в длину</span><strong>{{move.horizontalJump | number:'1.0-2'}} м</strong></div>
+        <div><span>Прыжок в высоту</span><strong>{{move.verticalJump | number:'1.0-2'}} м</strong></div>
+      </div>
+      <p class="calculation-explainer">Рост: {{move.heightMetres}} м · Athletics: {{move.athletics}}% · Штраф брони: {{move.armourPenalty}}. Это совместимые с прежним листом формулы; применение всех специальных правил движения требует дополнительной проверки.</p>
+    </div>
+  </div>
+</div>

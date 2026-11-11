@@ -3,7 +3,7 @@
     <div class="app-card-surface viewer-shell">
       <header class="app-page-header viewer-header">
         <div class="viewer-title-block"><p class="page-eyebrow">Character sheet</p><h1 class="app-page-title">{{character?.name || 'Unnamed character'}}</h1><p class="viewer-subtitle">{{character?.player || 'Ready for your next session'}}</p></div>
-        <details class="sheet-tools"><summary>Sheet tools</summary><div class="sheet-tool-actions"><button mat-stroked-button (click)="editCharacter()">Edit character</button><button mat-stroked-button routerLink="/view">PDF / Print</button><button mat-stroked-button (click)="download()">Download JSON backup</button><button mat-stroked-button routerLink="/menu">Character library</button></div></details>
+        <details class="sheet-tools"><summary>Sheet tools</summary><div class="sheet-tool-actions"><a mat-stroked-button routerLink="/view/companion">Открыть новый лист</a><button mat-stroked-button (click)="editCharacter()">Edit character</button><button mat-stroked-button routerLink="/view">PDF / Print</button><button mat-stroked-button (click)="download()">Download JSON backup</button><button mat-stroked-button routerLink="/menu">Character library</button></div></details>
       </header>
       <nav #sectionNavigation class="section-nav app-card-surface" aria-label="Character viewer sections">
         <p class="section-nav-label">Character sections <span>Everything you need during play</span></p>
