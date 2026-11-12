@@ -1,7 +1,7 @@
 <p class="intro">
   Your campaign, your rules. Create and edit anything below. Point allowances are guidance; every bonus remains editable.
 </p>
-<details open>
+<details [open]="!requestedGroup">
   <summary>
     Professional skills & specializations
     <span>
@@ -169,7 +169,7 @@
     </textarea>
   </label>
 </details>
-<details>
+<details data-builder-group="weapons" [open]="requestedGroup==='weapons'">
   <summary>
     Weapons, items & armour
   </summary>

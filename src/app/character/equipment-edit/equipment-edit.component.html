@@ -1,3 +1,15 @@
+<div class="armour-mode" role="group" aria-label="Способ выбора брони">
+  <button type="button" [class.active]="mode==='quick'" [attr.aria-pressed]="mode==='quick'" (click)="mode='quick'">Готовый вид брони</button>
+  <button type="button" [class.active]="mode==='detailed'" [attr.aria-pressed]="mode==='detailed'" (click)="mode='detailed'">Пошаговая настройка</button>
+</div>
+<label class="armour-preset" *ngIf="mode==='quick'">Вид брони
+  <select aria-label="Готовый вид брони" [ngModel]="selectedPreset" (ngModelChange)="choosePreset($event)">
+    <option value="" disabled>{{equipment.type ? 'Сохранённая / пользовательская броня' : 'Выберите вид брони'}}</option>
+    <option *ngFor="let preset of presets" [value]="preset.id">{{preset.type}} · {{preset.material}} — AP {{preset.ap}}, ENC {{preset.enc}}, {{preset.cost}} silver</option>
+  </select>
+</label>
+<p class="armour-summary" *ngIf="mode==='quick' && equipment.type"><strong>{{equipment.type}}</strong> · {{equipment.baseMaterial}} · {{equipment.material}} · {{equipment.construction}}<br>AP {{equipment.ap}} · ENC {{equipment.enc}} · {{equipment.cost}} silver за локацию. Значения ниже можно изменить.</p>
+<ng-container *ngIf="mode==='detailed'">
 <mat-form-field>
   <mat-label>Base Material:</mat-label>
   <mat-select
@@ -35,6 +47,7 @@
     <mat-option *ngFor="let type of getTypes()" [value]="type">{{type}}</mat-option>
   </mat-select>
 </mat-form-field>
+</ng-container>
 <mat-form-field>
   <mat-label>AP:</mat-label>
   <input type="number" matInput [(ngModel)]="equipment.ap"/>

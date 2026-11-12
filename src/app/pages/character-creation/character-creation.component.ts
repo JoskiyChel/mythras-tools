@@ -31,7 +31,8 @@ import { CombatState } from 'src/app/model/combat-state';
 import { StatePageComponent } from '../state-page/state-page.component';
 import { CareerComponent } from 'src/app/character/career/career.component';
 import { BonusSkillComponent } from 'src/app/character/bonus-skill/bonus-skill.component';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { requestedBuilderStep } from '../../services/builder-navigation';
 import {
   AppStorageService,
   DebouncedSaveHandle,
@@ -54,6 +55,8 @@ export class CharacterCreationComponent
   private activeStateHost?: ViewContainerRef;
   private sectionComponents = new Map<number, ComponentRef<any>>();
   private activeSectionIndex = -1;
+  private requestedGroup='';
+  private focusTimer?:ReturnType<typeof setTimeout>;
 
   override states: CombatState[] = [
     { stepLabel: 'Details', component: DetailsComponent },
@@ -94,7 +97,8 @@ export class CharacterCreationComponent
   constructor(
     private resolverLocal: ComponentFactoryResolver,
     private router: Router,
-    public storage: AppStorageService
+    public storage: AppStorageService,
+    private route: ActivatedRoute
   ) {
     super(resolverLocal);
     this.saveHandle = this.storage.createDebouncedSave(
@@ -105,13 +109,27 @@ export class CharacterCreationComponent
 
   override ngOnInit() {
     this.syncSidebarForViewport();
-    this.pageState = this.storage.getNumber('creation-state') ?? 0;
+    const requested=requestedBuilderStep(this.route.snapshot.queryParamMap.get('section'),this.states);
+    this.requestedGroup=this.route.snapshot.queryParamMap.get('focus')||'';
+    if(!['weapons','armour','items'].includes(this.requestedGroup))this.requestedGroup='';
+    this.pageState = requested ?? this.storage.getNumber('creation-state') ?? 0;
+    if(requested!==null)this.storage.setRaw('creation-state',this.pageState);
     this.character = this.storage.readCharacter('creation-character');
     this.pageState = Math.max(0, Math.min(this.states.length - 1, this.pageState ?? 0));
   }
 
   override ngAfterViewInit(): void {
     this.renderActiveState();
+    this.focusTimer=setTimeout(()=>{
+      if(this.requestedGroup){
+        const host=this.activeStateHost?.element.nativeElement as HTMLElement|undefined;
+        const target=host?.parentElement?.querySelector<HTMLElement>('[data-builder-group="'+this.requestedGroup+'"]');
+        target?.scrollIntoView({block:'start'});
+      }
+      if(this.route.snapshot.queryParamMap.has('section')){
+        void this.router.navigate([], {relativeTo:this.route,queryParams:{section:null,focus:null},queryParamsHandling:'merge',replaceUrl:true});
+      }
+    },0);
   }
 
   override onStepChange(event: any): void {
@@ -154,6 +172,7 @@ export class CharacterCreationComponent
   }
 
   ngOnDestroy(): void {
+    if(this.focusTimer)clearTimeout(this.focusTimer);
     this.flushSave();
     this.saveHandle.destroy();
     this.sectionComponents.forEach((componentRef) => componentRef.destroy());
@@ -175,6 +194,7 @@ export class CharacterCreationComponent
 
   override setProps(component: ComponentRef<any>): void {
     component.instance.character = this.character;
+    component.instance.requestedGroup = this.requestedGroup;
   }
 
   get allowanceKey(): string | null {

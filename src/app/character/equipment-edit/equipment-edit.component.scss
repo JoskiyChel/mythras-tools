@@ -1,1 +1,9 @@
 :host { display:block; min-width:0; }
+.armour-mode,.armour-preset,.armour-summary { grid-column:1/-1; }
+.armour-mode { display:flex; flex-wrap:wrap; gap:8px; }
+.armour-mode button { padding:8px 12px; min-height:40px; background:var(--ui-surface); color:var(--ui-secondary); border:1px solid var(--ui-border); border-radius:var(--ui-radius-control); font:inherit; font-size:14px; }
+.armour-mode button.active { background:var(--ui-olive-soft); color:var(--ui-olive); border-color:var(--ui-olive); }
+.armour-preset { display:grid; gap:8px; font-size:14px; min-width:0; }
+.armour-preset select { width:100%; min-width:0; min-height:44px; padding:8px 12px; border:1px solid var(--ui-border); border-radius:var(--ui-radius-control); background:var(--ui-surface); color:var(--ui-ink); }
+.armour-summary { padding:12px; background:var(--ui-canvas); border-left:3px solid var(--ui-olive); font-size:13px; line-height:1.6; }
+@media(max-width:599px) { .armour-preset select { font-size:16px; } }

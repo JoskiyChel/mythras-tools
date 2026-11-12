@@ -177,15 +177,18 @@ export function changeLocationHp(character:CompanionCharacter,location:HitLocati
 
 /** Return the actual skill object from the canonical character model. That way
  * both the Magic tab and the Skills column use identical difficulty calculations.
- * Prefer the exact name; fall back to specialised names like Devotion (Lanis). */
+ * Prefer a trained exact name; fall back to trained specializations like Devotion (Lanis). */
 export function findTraditionSkill(character:CompanionCharacter,name:string):Skill|null {
   const skills=character.skills;
   const list=[...(skills.skills||[]),...(skills.specialized||[]),
     ...(skills.extraProfessionalCultureSkills||[]),...(skills.extraProfessionalCareerSkills||[]),
     ...(skills.hobby?[skills.hobby]:[])].filter((skill):skill is Skill=>Boolean(skill));
-  return list.find(skill=>skill.name===name)
-    ||list.find(skill=>skill.name.startsWith(name+' ('))
-    ||null;
+  const matching=list.filter(skill=>skill.name===name||skill.name.startsWith(name+' ('));
+  // Hydrated characters contain unlearned generic entries as well as trained
+  // specializations. A placeholder must not hide Invocation/Devotion (cult).
+  const trained=matching.filter(skill=>getSkillTotal(character,skill)>0);
+  return trained.find(skill=>skill.name===name)||trained[0]
+    ||matching.find(skill=>skill.name===name)||matching[0]||null;
 }
 
 /** Legacy Mythras Tools treats each armour location as an equipped slot, no new
@@ -201,14 +204,18 @@ export function armourPenalty(character: CompanionCharacter): number {
 }
 
 export interface MovementSummary {
-  walking:number;running:number;sprinting:number;horizontalJump:number;verticalJump:number;
+  walking:number;running:number;sprinting:number;swimming:number;swimSkill:number;horizontalJump:number;verticalJump:number;
   armourPenalty:number;athletics:number;heightMetres:number;
 }
 /** Reuses Mythras Tools locomotion baselines with the Fatigue table (p.79),
  * full armour initiative penalty (p.58) and running/jumping adjustments (p.70). */
-export function movementSummary(character: CompanionCharacter): MovementSummary {
+export function movementSummary(character: CompanionCharacter,
+  tentative:Partial<Record<CharacteristicKey,number>>={},
+  improvements:{athletics?:number;swim?:number}={}): MovementSummary {
   const athletics = character.skills.skills.find(s=>s.name==='Athletics');
-  const percent = athletics ? skillTotal(character,athletics) : 0;
+  const percent = athletics ? skillTotal(character,athletics,tentative,improvements.athletics||0) : 0;
+  const swim=character.skills.skills.find(s=>s.name==='Swim');
+  const swimSkill=swim?skillTotal(character,swim,tentative,improvements.swim||0):0;
   const walking = movement(character);
   const bonus = Math.floor(percent/25) * 0.5;
   const jumpBonus = Math.floor(percent/20);
@@ -220,6 +227,10 @@ export function movementSummary(character: CompanionCharacter): MovementSummary 
   const immobile=walking===0;
   return {
     walking,
+    // Original sheet: movement rate + one metre per full 20% Swim.
+    // Use the same fatigue-adjusted baseline as the other movement modes.
+    swimming:immobile?0:Math.max(0,walking+Math.floor(swimSkill/20)),
+    swimSkill,
     running:immobile?0:Math.max(0,(walking+bonus)*3-penalty),
     sprinting:immobile?0:Math.max(0,(walking+bonus)*5-penalty),
     horizontalJump:immobile?0:Math.max(0,heightMetres*2+jumpBonus-jumpPenalty),
@@ -259,4 +270,11 @@ export function severity(hp:number,max:number): 'healthy'|'minor'|'serious'|'maj
   if(hp<=-max)return 'major';
   if(hp<=0)return 'serious';
   return hp>=max?'healthy':'minor';
+}
+
+/** Mythras Sorcery: one shaping point per 10% or fraction in Shaping.
+ * Cross-check: Roll20 Mythras v2.7 attr_shaping_points_max uses ceil(total/10).
+ * This is a per-spell capacity, not a resource to subtract on casting. */
+export function shapingPointMaximum(shaping:number):number {
+  return Number.isFinite(shaping)?Math.max(0,Math.ceil(shaping/10)):0;
 }

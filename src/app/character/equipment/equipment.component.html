@@ -1,6 +1,6 @@
 <div class="equipment-budget"><div><span>Money remaining</span><strong>{{getMoneyLeft()}} <small>/ {{getStartingMoney()}} silver</small></strong></div><div><span>Total encumbrance</span><strong>{{getTotalEnc()}} <small>ENC</small></strong></div></div>
 <mat-accordion multi>
-  <mat-expansion-panel>
+  <mat-expansion-panel data-builder-group="armour" [expanded]="requestedGroup==='armour'">
     <mat-expansion-panel-header>
       <mat-panel-title> Armour </mat-panel-title>
       <mat-panel-description>
@@ -39,7 +39,7 @@
         <equipment [equipment]="character.equipment.rightLeg"/>
     </div>
   </mat-expansion-panel>
-  <mat-expansion-panel>
+  <mat-expansion-panel data-builder-group="weapons" [expanded]="requestedGroup==='weapons'">
     <mat-expansion-panel-header>
       <mat-panel-title> Weapons </mat-panel-title>
     </mat-expansion-panel-header>
@@ -55,7 +55,7 @@
       <button mat-raised-button (click)="addNewWeapon()">ADD WEAPON</button>
     </div>
   </mat-expansion-panel>
-  <mat-expansion-panel>
+  <mat-expansion-panel data-builder-group="items" [expanded]="requestedGroup==='items'">
     <mat-expansion-panel-header>
       <mat-panel-title> Items </mat-panel-title>
     </mat-expansion-panel-header>

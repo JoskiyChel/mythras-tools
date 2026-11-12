@@ -10,6 +10,7 @@ import { getSkillTotal } from '../../services/character-service.service';
 export class CustomizationComponent {
     @Input()
     character: Character;
+    @Input() requestedGroup='';
     readonly characteristics = ['str', 'con', 'siz', 'dex', 'int', 'pow', 'cha'];
     readonly magicTypes = [{ key: 'folk', label: 'Folk magic' }, { key: 'sorcery', label: 'Sorcery' }, { key: 'miracles', label: 'Theism' }, { key: 'custom', label: 'Other magic / abilities' }];
     readonly armourLocations = [{ key: 'head', label: 'Head' }, { key: 'chest', label: 'Chest' }, { key: 'abdoment', label: 'Abdomen' }, { key: 'leftArm', label: 'Left arm' }, { key: 'rightArm', label: 'Right arm' }, { key: 'leftLeg', label: 'Left leg' }, { key: 'rightLeg', label: 'Right leg' }];

@@ -1,10 +1,11 @@
+import { Skill } from '../model/skill';
 import { hydrateCharacter } from './character-format';
 import { getCurrentHp } from './hit-points';
 import {
   CompanionCharacter, currentCharacteristic, skillTotal, damageModifier,
   companionState, maxLocationHp, skillGroups, movementSummary, modifierTotal,
   armourPenalty, fatigueRule, attributeTotal, displayedLocationHp, initializePristineHitPoints, movement,
-  changeLocationHp, findTraditionSkill,
+  changeLocationHp, findTraditionSkill, shapingPointMaximum,
 } from './companion-sheet';
 
 describe('Companion sheet / legacy character compatibility', () => {
@@ -153,4 +154,36 @@ describe('Companion sheet / legacy character compatibility', () => {
     const roundTripped=hydrateCharacter(JSON.parse(JSON.stringify(c))) as CompanionCharacter;
     expect(roundTripped.currentHitPoints?.leftArm).toBe(-5);
   });
+  it('calculates swimming from Swim, honours effects, preview and immobility', () => {
+    const c=character();
+    const swim=c.skills.skills.find(s=>s.name==='Swim')!;
+    const base=skillTotal(c,swim);
+    swim.extraBonus=(Number(swim.extraBonus)||0)+40-base;
+    expect(movementSummary(c).swimming).toBe(8);
+    companionState(c).effects=[{id:'swim',name:'Swim boost',duration:'',modifiers:[{kind:'skill',key:'Swim',amount:20}]}];
+    expect(movementSummary(c).swimming).toBe(9);
+    expect(movementSummary(c,{}, {swim:20}).swimming).toBe(10);
+    expect(movementSummary(c,{str:20}).swimSkill).toBeGreaterThan(movementSummary(c).swimSkill);
+    c.fatigueLevel='Tired';
+    expect(movementSummary(c).swimming).toBe(8);
+    c.fatigueLevel='Incapacitated';
+    expect(movementSummary(c).swimming).toBe(0);
+  });
+
+  it('rounds shaping capacity up at each ten-percent boundary', () => {
+    for(const [skill,expected] of [[0,0],[1,1],[10,1],[11,2],[99,10],[100,10],[101,11],[-10,0],[NaN,0]]) {
+      expect(shapingPointMaximum(skill)).withContext(String(skill)).toBe(expected);
+    }
+  });
+
+  it('prefers a trained magical specialization over its unlearned generic placeholder', () => {
+    const c=character();
+    const generic=findTraditionSkill(c,'Invocation')!;
+    const specific=Object.assign(new Skill('Invocation (Order)',true),generic,{name:'Invocation (Order)',force:true});
+    c.skills.specialized.push(specific);
+    expect(findTraditionSkill(c,'Invocation')).toBe(specific);
+    generic.force=true;
+    expect(findTraditionSkill(c,'Invocation')).toBe(generic);
+  });
+
 });

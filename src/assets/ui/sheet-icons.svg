@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="heart" viewBox="0 0 24 24">
+    <path d="M12 20 4.2 12.4C-.8 7.5 6 1.5 10 5.3L12 7l2-1.7c4-3.8 10.8 2.2 5.8 7.1Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="shield" viewBox="0 0 24 24">
+    <path d="m12 3 8 3v6c0 4-4.5 7.5-8 9-3.5-1.5-8-5-8-9V6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M12 6v12M7 8v4c0 2 2 4 3 5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="d20" viewBox="0 0 24 24">
+    <path d="m12 2 10 6v9l-10 5-10-5V8Zm0 0L7 8h10Zm-5 6 5 14 5-14M2 8l5 0-5 9 10 5 10-5-5-9 5 0M7 8l10 0M2 17h20" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+  </symbol>
+</svg>
