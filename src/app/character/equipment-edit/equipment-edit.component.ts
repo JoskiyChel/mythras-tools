@@ -1,5 +1,6 @@
 import { Equipment } from './../../model/equipment';
 import { Component, Input } from '@angular/core';
+import { ARMOUR_PRESETS, ARMOUR_BASE_MATERIALS as baseMaterials, ARMOUR_CONSTRUCTIONS as constructions, ARMOUR_MATERIALS as materials, applyArmourPreset } from '../../services/armour-catalog';
 import { resetObject } from 'src/app/services/common.service';
 
 @Component({
@@ -10,6 +11,13 @@ import { resetObject } from 'src/app/services/common.service';
 export class EquipmentEditComponent {
 
   @Input() equipment : Equipment;
+  mode:'quick'|'detailed'='quick';
+  readonly presets=ARMOUR_PRESETS;
+  get selectedPreset():string {
+    return this.presets.find(p=>p.type===this.equipment.type && p.material===this.equipment.material && p.construction===this.equipment.construction)?.id||'';
+  }
+  choosePreset(id:string):void { applyArmourPreset(this.equipment,id); }
+
 
   changedBaseMaterial(base : string) : void {
     resetObject(this.equipment);
@@ -46,103 +54,5 @@ export class EquipmentEditComponent {
       return Object.keys(constructions);
     return baseMaterials[this.equipment.baseMaterial];
   }
-
-}
-
-const baseMaterials : any = {
-  "Flexible" : [
-    "Natural/Cured", 
-    "Padded/Quilted",
-    "Laminated",
-    "Scaled"
-  ],
-  "Rigid" : [
-    "Half Plate",
-    "Mail",
-    "Plated Mail",
-    "Articulated Plate"
-  ]
-}
-
-const materials : any = {
-  "Bone" : 1.5,
-  "Bronze" : 1,
-  "Chitin" : 0.75,
-  "Iron" : 1,
-  "Ivory" : 1.25,
-  "Leather" : 2,
-  "Linen" : 1,
-  "Shell" : 2,
-  "Silk" : 0.75,
-  "Steel" : 0.75,
-  "Stone" : 3
-}
-
-const constructions : any = {
-  "Natural/Cured" : {
-    types: [
-      "Furs", "Hides"
-    ],
-    ap: 1,
-    enc: 2,
-    cost: 20
-  },
-  "Padded/Quilted" : {
-    types: [
-      "Aketon", "Gambeson"
-    ],
-    ap: 2,
-    enc: 1,
-    cost: 80
-  },
-  "Laminated" : {
-    types: [
-      "Linothorax", "Bezainted"
-    ],
-    ap: 3,
-    enc: 2,
-    cost: 180
-  },
-  "Scaled" : {
-    types: [
-      "Brigandine", "Lamellar"
-    ],
-    ap: 4,
-    enc: 3,
-    cost: 320
-  },
-
-  "Half Plate" : {
-    types: [
-      "Hoplite Plate"
-    ],
-    ap: 5,
-    enc: 4,
-    cost: 500
-  },
-  "Mail" : {
-    types: [
-      "Mail Hauberk", "Laminar"
-    ],
-    ap: 6,
-    enc: 5,
-    cost: 900
-  },
-  "Plated Mail" : {
-    types: [
-      "Splinted Chainmail"
-    ],
-    ap: 7,
-    enc: 6,
-    cost: 1400
-  },
-  "Articulated Plate" : {
-    types: [
-      "Gothic Plate"
-    ],
-    ap: 8,
-    enc: 7,
-    cost: 2400
-  },
 
 }

@@ -156,3 +156,55 @@ button:focus-visible, input:focus-visible,select:focus-visible,textarea:focus-vi
 :where(input:not([type='checkbox']),select,textarea) { color:var(--ui-ink); background:var(--ui-surface); border:1px solid var(--ui-border); border-radius:var(--ui-radius-control); }
 select { min-height:36px; }
 input[type='checkbox'] { accent-color:var(--ui-accent); }
+
+/* The hit diagram is a warm stone relief; only wounds and selection add colour. */
+.body-legend { display:inline-flex; gap:4px; align-items:center; font-variant-numeric:tabular-nums; }
+.sheet-icon { width:16px; height:16px; color:var(--ui-secondary); }
+.body-svg { height:auto; max-width:480px; margin:8px auto; overflow:visible; font-variant-numeric:tabular-nums; }
+.body-location { stroke:#98866a; stroke-width:1.6; }
+.location-target { cursor:pointer; outline:none; }
+.location-target:hover .body-location { stroke:var(--ui-accent); stroke-width:2.5; }
+.location-target.selected .body-location,.location-target:focus-visible .body-location { stroke:var(--ui-accent); stroke-width:3; }
+.location-target:focus-visible .body-label { text-decoration:underline; }
+.body-value-backing { fill:var(--ui-surface); opacity:.94; pointer-events:none; }
+.body-hp,.body-ap { font-size:16px; font-weight:500; fill:var(--ui-ink); }
+.body-label { font-size:18px; font-weight:500; fill:var(--ui-secondary); }
+.body-roll { font-size:16px; fill:var(--ui-secondary); }
+.body-stat-icon { color:var(--ui-secondary); pointer-events:none; }
+.body-engraving { fill:none; stroke:#98866a; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
+.body-zone .zone-title { display:flex; justify-content:space-between; gap:8px; }
+.combat-styles { display:grid; gap:8px; margin-bottom:16px; }
+.combat-style { border-bottom:1px solid var(--ui-border); padding:8px 0 12px; }
+.style-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.style-skill { background:transparent; border:0; padding:4px 0; color:var(--ui-accent); font-size:16px; text-align:left; text-decoration:underline; text-underline-offset:3px; }
+.style-skill strong { margin-left:8px; font-weight:500; font-variant-numeric:tabular-nums; }
+.style-info { display:inline-flex; align-items:center; gap:4px; padding:4px 8px; min-height:32px; border:1px solid var(--ui-border); border-radius:var(--ui-radius-control); color:var(--ui-secondary); background:var(--ui-surface); font-size:13px; }
+.style-trait { font-size:14px; color:var(--ui-secondary); margin-top:4px; }
+.rule-link { border:0; background:transparent; color:var(--ui-accent); text-decoration:underline; text-underline-offset:3px; font-size:inherit; padding:4px; text-align:left; }
+.rule-link:hover,.style-skill:hover { color:var(--ui-accent-hover); }
+.style-weapons { display:flex; gap:4px 24px; flex-wrap:wrap; margin:8px 0 0; font-size:13px; }
+.style-weapons>div { display:flex; gap:8px; }
+.style-weapons dt { color:var(--ui-muted); }
+.style-weapons dd { margin:0; color:var(--ui-ink); }
+.weapon-effects { display:grid; gap:8px; }
+.magic-resource { margin:0 12px 12px; padding:12px; border:1px solid var(--ui-border); border-radius:var(--ui-radius-control); background:var(--ui-canvas); }
+.magic-resource h4 { font-size:14px; font-weight:500; margin:0 0 8px; }
+.magic-resource p { font-size:12px; color:var(--ui-secondary); line-height:1.5; margin:8px 0 0; }
+.devotion-fields { display:flex; align-items:flex-end; gap:12px; }
+.devotion-fields label { display:grid; gap:4px; font-size:12px; color:var(--ui-secondary); }
+.devotion-fields input { width:88px; min-height:36px; padding:8px; font-size:16px; }
+.devotion-fields>span { padding-bottom:8px; color:var(--ui-muted); }
+.shaping-points h4 { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.shaping-points strong { font-size:24px; font-weight:500; font-variant-numeric:tabular-nums; }
+.rules-dialog h3 { font-size:14px; font-weight:500; color:var(--ui-secondary); margin:0 0 8px; }
+.rules-dialog section+section { margin-top:20px; }
+.rules-dialog p { font-size:14px; line-height:1.6; white-space:pre-wrap; margin:8px 0 0; overflow-wrap:anywhere; }
+@media(max-width:680px) {
+  .weapon-extra { grid-template-columns:1fr; }
+  .tab-intro { align-items:flex-start; flex-direction:column; gap:12px; }
+  .armour-summary>div { min-width:0; flex:1; }
+}
+
+.weapon-toggle { display:inline-flex; align-items:center; justify-content:center; min-height:36px; min-width:36px; border:0; border-radius:var(--ui-radius-control); background:transparent; color:var(--ui-secondary); }
+.weapon-toggle:hover { background:var(--ui-canvas); }
+@media(max-width:680px) { .body-hp,.body-ap,.body-roll { font-size:18px; } .body-label { font-size:20px; } }

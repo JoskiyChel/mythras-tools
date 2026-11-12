@@ -15,6 +15,7 @@ import { Item } from 'src/app/model/item';
 })
 export class EquipmentComponent implements OnInit {
   character: Character;
+  requestedGroup='';
 
   ngOnInit() {
     if (!this.character.equipment) {
