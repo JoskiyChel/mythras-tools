@@ -1,4 +1,4 @@
-.concept-table { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr)); gap:10px; margin:24px 0; }
-.concept-coockie { text-align:left; padding:14px 16px; background:#faf7fd; border:1px solid #e6daee; border-radius:10px; font-size:14px; color:#77588c; }
+.concept-table { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr)); gap:8px; margin:24px 0; }
+.concept-coockie { text-align:left; padding:16px 16px; background:var(--ui-surface); border:1px solid var(--ui-border); border-radius:10px; font-size:14px; color:var(--ui-accent); }
 mat-form-field { width:100%; margin:8px 0; }
 textarea { min-height:110px; }

@@ -1,0 +1,46 @@
+/* Agora UI kit: limestone, ink and bronze. Screen UI only; PDF geometry is independent. */
+:root {
+  --ui-canvas: #f5f3ee;
+  --ui-surface: #fffdf9;
+  --ui-raised: #eeeae1;
+  --ui-ink: #292c27;
+  --ui-secondary: #51574f;
+  --ui-muted: #656b61;
+  --ui-border: #d7d4c9;
+  --ui-accent: #78452f;
+  --ui-accent-hover: #593421;
+  --ui-accent-soft: #f0e5da;
+  --ui-olive: #4e5d45;
+  --ui-olive-soft: #e9ede4;
+  --ui-on-dark: #fffdf9;
+  --ui-danger: #963e36;
+  --ui-danger-soft: #f7e9e5;
+  --ui-success: #326345;
+  --ui-success-soft: #e6efe7;
+  --ui-warning: #795521;
+  --ui-warning-soft: #f6efdf;
+  --ui-focus: #78452f;
+  --ui-font: Roboto, 'Helvetica Neue', sans-serif;
+  --ui-display: 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --ui-radius-control: 6px;
+  --ui-radius-panel: 12px;
+  --ui-shadow: 0 1px 3px rgb(41 44 39 / 5%);
+  --ui-motion: 160ms cubic-bezier(.22, 1, .36, 1);
+
+  --app-color-bg: var(--ui-canvas);
+  --app-color-surface: var(--ui-surface);
+  --app-color-text: var(--ui-ink);
+  --app-color-muted: var(--ui-muted);
+  --app-color-border: var(--ui-border);
+  --app-color-primary: var(--ui-accent);
+  --app-color-accent: var(--ui-olive);
+  --app-color-warn: var(--ui-danger);
+}
+:root {
+  --app-space-1: 4px; --app-space-2: 8px; --app-space-3: 12px;
+  --app-space-4: 16px; --app-space-5: 24px; --app-space-6: 32px; --app-space-7: 48px;
+  --app-radius-sm: 4px; --app-radius-md: 8px; --app-radius-lg: 12px;
+  --app-shadow-sm: var(--ui-shadow); --app-shadow-md: 0 8px 24px rgb(41 44 39 / 8%);
+  --app-font-size-xs: 12px; --app-font-size-sm: 14px; --app-font-size-md: 16px;
+  --app-font-size-lg: 20px; --app-font-size-xl: 28px; --app-font-size-2xl: 32px;
+}

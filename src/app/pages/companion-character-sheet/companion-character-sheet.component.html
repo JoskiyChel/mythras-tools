@@ -1,6 +1,6 @@
 <div class="companion-shell" *ngIf="character">
   <header class="masthead">
-    <div class="masthead-brand">✦ MYTHRAS <small>COMPANION</small></div>
+    <div class="masthead-brand">Mythras <small>Companion</small></div>
     <div class="masthead-tools">
       <a routerLink="/menu">Библиотека</a>
       <a routerLink="/view">PDF / Печать</a>
@@ -23,7 +23,7 @@
       <div class="panel-content">
         <p class="minor-note" *ngIf="upgrade">Зелёный/красный — прямое изменение, синий ↗ — пересчёт от характеристик.</p>
         <input class="search-field" type="search" [(ngModel)]="query" aria-label="Поиск навыка" placeholder="Поиск навыка…">
-        <section class="skill-group" *ngFor="let group of groups">
+        <section class="skill-group" *ngFor="let group of groups;trackBy:trackGroup">
           <h3 *ngIf="group.skills.length">{{group.name}}</h3>
           <div class="skill-row" *ngFor="let skill of group.skills; trackBy:trackSkill">
             <button class="skill-name" type="button" (click)="activeSkill=skill" [title]="skill.name">{{skill.name}}</button>
@@ -86,7 +86,7 @@
               <div class="attribute metric"><small>Experience Modifier</small><strong>{{attr('expMod') >= 0 ? '+' : ''}}{{attr('expMod')}}</strong></div>
               <div class="attribute metric"><small>Initiative</small><strong>{{canAct?attr('init'):'—'}}</strong><small class="footnote">Броня −{{armourPenalty}} · Усталость: {{fatigueInitiativePenalty===null?'нет действий':fatigueInitiativePenalty}}</small></div>
               <button class="attribute metric interactive" type="button" (click)="movementDialog=true">
-                <small>Movement <b>↗</b></small><strong>{{currentMovement}} м</strong><small class="footnote">Бег · спринт · прыжки</small>
+                <small>Movement <span class="material-icons ui-icon" aria-hidden="true">open_in_new</span></small><strong>{{currentMovement}} м</strong><small class="footnote">Бег · спринт · прыжки</small>
               </button>
             </div>
             <div class="resource-grid">
@@ -130,7 +130,7 @@
                 <small class="hp-amount-help" id="companion-hp-amount-help" *ngIf="!hpAmountValid">Укажите целое число от 1 до 999.</small>
               </div>
             </div>
-            <label class="injury-control" *ngIf="injuryMark(selectedLocation)">
+            <label class="injury-control">
               Последствие травмы
               <select [(ngModel)]="injury"><option value="">Не указано</option><option value="Отсечена">Отсечена</option><option value="Раздроблена">Раздроблена</option><option value="Пронзена">Пронзена</option></select>
             </label>
@@ -205,7 +205,7 @@
                 <tbody><ng-container *ngFor="let w of allWeaponRows;let index=index">
                   <tr class="clickable-row" (click)="openedWeapon=openedWeapon===index?-1:index">
                     <td><strong>{{w.name}}</strong><small>{{weaponType(w)}}</small></td><td>{{weaponDamage(w)}}</td><td>{{w.size || '—'}}</td>
-                    <td>{{w.range || w.reach || '—'}}</td><td>{{w.ap ?? '—'}} / {{w.hp ?? '—'}}</td><td>{{w.enc ?? '—'}}</td><td>{{openedWeapon===index?'⌃':'⌄'}}</td>
+                    <td>{{w.range || w.reach || '—'}}</td><td>{{w.ap ?? '—'}} / {{w.hp ?? '—'}}</td><td>{{w.enc ?? '—'}}</td><td><span class="material-icons ui-icon" aria-hidden="true">{{openedWeapon===index?'expand_less':'expand_more'}}</span></td>
                   </tr>
                   <tr *ngIf="openedWeapon===index" class="expanded-row"><td colspan="7"><div class="weapon-extra">
                     <p><strong>Особые эффекты:</strong> {{w.offensiveSkills || '—'}} / {{w.defensiveSkills || '—'}}</p>
@@ -221,18 +221,18 @@
           </section>
           <section *ngSwitchCase="'magic'">
             <div class="tab-intro"><div><h2>Магические дисциплины</h2><p>Карточки формируются из выбранных заклинаний персонажа.</p></div><button class="quiet" type="button" (click)="editInBuilder()">Редактировать магию</button></div>
-            <div class="tradition-grid"><article class="tradition" *ngFor="let m of traditions">
+            <div class="tradition-grid"><article class="tradition" *ngFor="let m of traditions;trackBy:trackTradition">
               <div class="tradition-heading"><h3>{{m.title}}</h3><small>{{m.subtitle}}</small></div>
               <div class="tradition-skills">
                 <button *ngFor="let name of m.skills" type="button" class="magic-skill-button"
                   (click)="openMagicSkill(name)" [disabled]="!magicSkill(name)"
                   [attr.aria-label]="'Показать сложности магического навыка ' + name">
                   <span>{{name}}:</span> <strong>{{relatedSkill(name) ?? '—'}}{{relatedSkill(name) !== null ? '%' : ''}}</strong>
-                  <span class="magic-skill-arrow" *ngIf="magicSkill(name)" aria-hidden="true">↗</span>
+                  <span class="material-icons ui-icon magic-skill-arrow" *ngIf="magicSkill(name)" aria-hidden="true">open_in_new</span>
                 </button>
               </div>
-              <div class="spell" *ngFor="let spell of m.spells;let i=index">
-                <button type="button" (click)="openedSpell=openedSpell===m.title+i?'':m.title+i">{{spell.name}} <span>{{openedSpell===m.title+i?'⌃':'⌄'}}</span></button>
+              <div class="spell" *ngFor="let spell of m.spells;let i=index;trackBy:trackSpell">
+                <button type="button" (click)="openedSpell=openedSpell===m.title+i?'':m.title+i">{{spell.name}} <span class="material-icons ui-icon" aria-hidden="true">{{openedSpell===m.title+i?'expand_less':'expand_more'}}</span></button>
                 <div class="spell-description" *ngIf="openedSpell===m.title+i"><small>{{spell.tags || ''}}</small><p>{{spell.description || 'Описание не содержится в сохранении.'}}</p></div>
               </div>
             </article></div>
@@ -266,7 +266,7 @@
 
 <!-- Skill difficulty modal, closed by backdrop, button and Escape -->
 <div class="overlay" *ngIf="activeSkill" (mousedown)="stopOverlay($event)">
-  <div class="dialog" role="dialog" aria-modal="true" aria-label="Сложности навыка">
+  <div class="dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-label="Сложности навыка">
     <header><div><small>Проверка навыка</small><h2>{{activeSkill.name}}</h2></div><button type="button" (click)="activeSkill=null" aria-label="Закрыть">×</button></header>
     <div class="dialog-body"><div class="dialog-result"><span>Текущее значение</span><strong>{{skillValue(activeSkill)}}%</strong></div>
       <div class="difficulty-grid"><div *ngFor="let difficulty of difficulties"><span>{{difficulty.name}}</span><strong>{{difficultyTarget(difficulty.multiplier)}}%</strong></div></div>
@@ -276,7 +276,7 @@
 
 <!-- Movement panel uses the same calculation baseline as the original viewer -->
 <div class="overlay" *ngIf="movementDialog" (mousedown)="stopOverlay($event)">
-  <div class="dialog" role="dialog" aria-modal="true" aria-label="Движение и прыжки">
+  <div class="dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-label="Движение и прыжки">
     <header><div><small>Расчёт от Athletics, роста, движения и штрафа брони</small><h2>Movement</h2></div><button type="button" (click)="movementDialog=false" aria-label="Закрыть">×</button></header>
     <div class="dialog-body">
       <div class="difficulty-grid movement-stats">
@@ -293,7 +293,7 @@
 
 <!-- Full-width fatigue reference: deliberately not restricted to the narrow effects column. -->
 <div class="overlay" *ngIf="fatigueTableOpen" (mousedown)="stopOverlay($event)">
-  <div class="dialog fatigue-dialog" role="dialog" aria-modal="true" aria-label="Уровни усталости">
+  <div class="dialog fatigue-dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-label="Уровни усталости">
     <header><div><small>Mythras Core Rules, стр. 79</small><h2>Уровни усталости</h2></div><button type="button" (click)="fatigueTableOpen=false" aria-label="Закрыть">×</button></header>
     <div class="dialog-body">
               <div class="fatigue-table-scroll">

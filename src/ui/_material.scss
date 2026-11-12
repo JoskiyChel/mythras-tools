@@ -1,0 +1,23 @@
+@use '@angular/material' as mat;
+
+$bronze: (
+  50: #f8f2ec, 100: #f0e5da, 200: #e1cbb8, 300: #c7a282,
+  400: #a77957, 500: #875538, 600: #78452f, 700: #673b29,
+  800: #593421, 900: #40271d,
+  contrast: (50: #292c27, 100: #292c27, 200: #292c27, 300: #292c27,
+    400: #fffdf9, 500: #fffdf9, 600: #fffdf9, 700: #fffdf9, 800: #fffdf9, 900: #fffdf9)
+);
+$olive: (
+  50: #f3f5ef, 100: #e9ede4, 200: #d2d9c8, 300: #a9b59b,
+  400: #788968, 500: #596b4e, 600: #4e5d45, 700: #414e39,
+  800: #35402e, 900: #293224,
+  contrast: (50: #292c27, 100: #292c27, 200: #292c27, 300: #292c27,
+    400: #fffdf9, 500: #fffdf9, 600: #fffdf9, 700: #fffdf9, 800: #fffdf9, 900: #fffdf9)
+);
+$theme: mat.define-light-theme((
+  color: (primary: mat.define-palette($bronze, 600), accent: mat.define-palette($olive, 600), warn: mat.define-palette(mat.$red-palette, 800)),
+  typography: mat.define-typography-config($font-family: 'Roboto, Helvetica Neue, sans-serif'),
+  density: 0
+));
+@include mat.core();
+@include mat.all-component-themes($theme);

@@ -1,15 +1,15 @@
 <div class="app-shell">
 <div class="app-container page-wrapper">
     <header class="header app-page-header">
-        <div class="editor-identity"><a routerLink="/menu" class="back-link" aria-label="Character library"><mat-icon>arrow_back</mat-icon></a><div><p class="eyebrow">CHARACTER WORKSHOP</p><h1 class="app-page-title">{{character.name || 'A new adventurer'}}</h1></div></div>
+        <div class="editor-identity"><a routerLink="/menu" class="back-link" aria-label="Character library"><mat-icon>arrow_back</mat-icon></a><div><p class="eyebrow">Конструктор персонажа</p><h1 class="app-page-title">{{character.name || 'A new adventurer'}}</h1></div></div>
         <div class="editor-actions"><button mat-stroked-button (click)="openCustomization()" [disabled]="isCustomization"><mat-icon>tune</mat-icon> Customize</button><button mat-stroked-button (click)="download()"><mat-icon>download</mat-icon> JSON</button><button mat-raised-button color="primary" (click)="preview()">Open sheet <mat-icon>arrow_forward</mat-icon></button></div>
     </header>
     <div class="editor-status"><span role="status" [class.save-error]="storage.error">{{storage.error || (storage.lastSaved ? 'Saved on this device · ' + (storage.lastSaved | date:'shortTime') : 'Autosave is ready')}}</span><span>Mythras 2e · Flexible creation</span></div>
     <button type="button" class="mobile-section-toggle" (click)="toggleSidebar()" [attr.aria-expanded]="sidebarOpen"><mat-icon>menu</mat-icon> {{pageState + 1}} / {{states.length}} · {{getCurrentState().stepLabel}}<mat-icon>{{sidebarOpen ? 'expand_less' : 'expand_more'}}</mat-icon></button>
     <div class="creation-layout">
         <aside class="creation-sidebar app-card-surface" [class.open]="sidebarOpen">
-            <p class="eyebrow">BUILD YOUR CHARACTER</p>
-            <div class="creation-progress">Section {{pageState + 1}} of {{states.length}}</div><div class="progress-track"><span [style.width.%]="(pageState + 1) / states.length * 100"></span></div>
+            <p class="eyebrow">Разделы персонажа</p>
+            <div class="creation-progress">Раздел {{pageState + 1}} из {{states.length}}</div><div class="progress-track"><span [style.width.%]="(pageState + 1) / states.length * 100"></span></div>
             <div class="step-list">
                 <button
                     type="button"
@@ -28,7 +28,7 @@
         <section class="creation-main">
             <mat-card class="app-card-surface">
                 <mat-card-header>
-                    <div><p class="eyebrow">SECTION {{pageState + 1}}</p><h2>{{getCurrentState().stepLabel}}</h2></div>
+                    <div><p class="eyebrow">Раздел {{pageState + 1}}</p><h2>{{getCurrentState().stepLabel}}</h2></div>
                 </mat-card-header>	
                 <mat-card-content >
                     <aside class="customization-guidance" *ngIf="customizationHint"><div><strong>Make it your own</strong><p>{{customizationHint}}</p></div><button mat-stroked-button (click)="openCustomization()">Open Customization</button></aside>

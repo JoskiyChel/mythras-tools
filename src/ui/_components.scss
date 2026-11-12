@@ -1,0 +1,77 @@
+/* Shared Agora components. Semantic selectors serve all Angular feature pages. */
+@media screen {
+  html { color-scheme: light; background: var(--ui-canvas); }
+  body { background: var(--ui-canvas); color: var(--ui-ink); }
+  .app-shell { background: var(--ui-canvas); }
+  .app-container { max-width: 1440px; padding: 32px; }
+  .app-card-surface, .mat-mdc-card, .mat-expansion-panel {
+    background: var(--ui-surface); border-color: var(--ui-border);
+    border-radius: var(--ui-radius-panel); box-shadow: var(--ui-shadow);
+  }
+  :where(.app-shell, .info-modal-shell) :where(h1, h2) {
+    font-family: var(--ui-display); font-weight: 400; color: var(--ui-ink);
+    letter-spacing: normal; text-wrap: balance;
+  }
+  .tool-header h1, app-character-creation .creation-main h2 {
+    font-family: var(--ui-display) !important; font-weight: 400 !important; letter-spacing: normal;
+  }
+  .tool-header { border-bottom: 1px solid var(--ui-border); margin-bottom: 24px; padding: 8px 0 24px; }
+  .tool-header h1 { font-size: clamp(28px, 3vw, 40px); line-height: 1.2; }
+  .tool-header p:not(.page-eyebrow) { font-size: 15px; color: var(--ui-secondary); line-height: 1.6; }
+  :where(.page-eyebrow, .eyebrow) {
+    text-transform: none; font-size: 13px; letter-spacing: normal;
+    color: var(--ui-muted); font-weight: 400;
+  }
+  .mat-mdc-button-base { font-size: 14px; letter-spacing: normal !important; border-radius: var(--ui-radius-control) !important; }
+  .mat-mdc-outlined-button { border-color: var(--ui-border) !important; }
+  .mat-mdc-raised-button, .mat-mdc-unelevated-button { box-shadow: none !important; }
+  .mat-icon { color: inherit; }
+  .mat-mdc-button-base .mat-icon { width: 18px; height: 18px; font-size: 18px; }
+  a, button, input, textarea, select, summary {
+    transition: color var(--ui-motion), background-color var(--ui-motion), border-color var(--ui-motion);
+  }
+  :where(a, button, input, textarea, select, summary):focus-visible {
+    outline: 2px solid var(--ui-focus); outline-offset: 3px;
+  }
+  a { text-underline-offset: 3px; }
+  .modal-opener { color: var(--ui-accent); text-decoration-color: var(--ui-border); }
+  .modal-opener:hover { text-decoration-color: currentColor; }
+  .mat-mdc-form-field { --mdc-filled-text-field-container-color: var(--ui-raised); }
+  .mat-mdc-select-panel, .mat-mdc-menu-panel, .mat-mdc-dialog-container .mdc-dialog__surface {
+    background: var(--ui-surface); color: var(--ui-ink);
+  }
+  .info-modal-title { font-family: var(--ui-display) !important; font-size: 28px !important; color: var(--ui-ink); }
+  .info-modal-content, .info-modal-content p, .info-modal-content li { color: var(--ui-ink); line-height: 1.65; }
+  .info-modal-actions { background: var(--ui-canvas); border-color: var(--ui-border); }
+  .info-modal-actions button { background: var(--ui-accent); }
+  .table {
+    --bs-table-bg: var(--ui-surface); --bs-table-color: var(--ui-ink);
+    --bs-table-striped-bg: var(--ui-canvas); --bs-table-striped-color: var(--ui-ink);
+    --bs-table-hover-bg: var(--ui-raised); --bs-table-hover-color: var(--ui-ink);
+    --bs-table-active-bg: var(--ui-olive-soft); --bs-table-active-color: var(--ui-ink);
+  }
+  .table th, .mat-mdc-header-cell { background: var(--ui-raised); color: var(--ui-secondary); font-weight: 500; }
+  .table td, .mat-mdc-cell { color: var(--ui-ink); border-color: var(--ui-border); }
+  .table tbody tr:hover, .mat-mdc-row:hover { background: var(--ui-canvas); }
+  .table [aria-selected='true'], .mat-mdc-row.selected { background: var(--ui-olive-soft); }
+  :where(.mat-mdc-cell, .app-table td, .skill-score, .allocation-summary, .step-index) { font-variant-numeric: tabular-nums; }
+  .save-status { font-size: 12px; color: var(--ui-muted); }
+  app-character-creation .step-list-item.active, app-combat-flow .step-list-item.active {
+    background: var(--ui-olive-soft); color: var(--ui-olive); box-shadow: inset 3px 0 var(--ui-olive);
+  }
+  app-character-creation .progress-track span { background: var(--ui-olive); }
+  .reference-links .modal-opener, .quick-reference-grid button { color: var(--ui-accent); }
+  app-character-creation .creation-main { min-width: 0; }
+  app-character-creation .mat-expansion-panel-header-title { color: var(--ui-ink); }
+  .perspective-card:hover, .tool-card:hover { border-color: var(--ui-accent); }
+  .info-modal-shell :where(button, input, select), .reference-panel { border-radius: var(--ui-radius-control); }
+  @media (max-width: 599px) {
+    .app-container { padding: 20px 16px; }
+    .tool-header { padding-bottom: 20px; }
+    .info-modal-title { font-size: 24px !important; }
+    :where(input, textarea, select) { font-size: 16px; }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}

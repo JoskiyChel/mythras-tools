@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { A11yModule } from '@angular/cdk/a11y';
 import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -48,7 +49,7 @@ const ATT_KEYS: {key:AttributeKey; name:string}[] = [
 @Component({
   selector:'app-companion-character-sheet',
   standalone:true,
-  imports:[CommonModule,FormsModule,RouterModule],
+  imports:[CommonModule,FormsModule,RouterModule,A11yModule],
   templateUrl:'./companion-character-sheet.component.html',
   styleUrls:['./companion-character-sheet.component.scss'],
 })
@@ -191,7 +192,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     return 'rgb('+[0,1,2].map(i=>Math.round([235,179,99][i]*(1-t)+[150,200,155][i]*t)).join(',')+')';
   }
   injuryMark(key:HitLocation):boolean {
-    return this.hp(key)<=0;
+    return this.hp(key)<=0 || Boolean(this.character.companion?.injuries?.[key]);
   }
   /** Reject blank, fractional or otherwise invalid amounts rather than dealing accidental damage. */
   get hpAmountValid():boolean {
@@ -257,6 +258,11 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   }
   difficultyTarget(multiplier:number):number {return this.activeSkill?Math.ceil(this.skillValue(this.activeSkill)*multiplier):0;}
   stopOverlay(event:MouseEvent):void {if(event.target===event.currentTarget){this.activeSkill=null;this.movementDialog=false;this.fatigueTableOpen=false;}}
+  // Getters return fresh grouping objects; stable keys retain the triggering
+  // buttons so dialog focus restoration and keyboard navigation can work.
+  trackGroup(_index:number,group:{name:string}):string{return group.name;}
+  trackTradition(_index:number,tradition:Tradition):string{return tradition.title;}
+  trackSpell(index:number,spell:{name:string}):string{return index+':'+spell.name;}
   trackSkill(_index:number,s:Skill):Skill{return s;}
   trackLocation(_index:number,loc:LocationDisplay):HitLocation{return loc.key;}
 }

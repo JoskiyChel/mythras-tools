@@ -1,4 +1,4 @@
-.attack-modes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); padding:6px; gap:6px; border:1px solid #e1d5eb; border-radius:12px; background:#f2edf8; margin-bottom:24px; }
-.attack-modes button { border:0; background:transparent; min-height:44px; color:#776187; }
-.attack-modes button.active { background:#673ab7; color:white; }
+.attack-modes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); padding:8px; gap:8px; border:1px solid var(--ui-border); border-radius:12px; background:var(--ui-canvas); margin-bottom:24px; }
+.attack-modes button { border:0; background:transparent; min-height:44px; color:var(--ui-accent); }
+.attack-modes button.active { background:var(--ui-accent); color:var(--ui-on-dark); }
 .reference-links > li:not(.list-inline-item):first-child { line-height:1.7; }

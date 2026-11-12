@@ -75,3 +75,9 @@ Android/Chrome обычно использует сохранения того �
 Исходный конструктор и основа приложения разработаны в [Mythras Tools от Tsinwntas](https://github.com/Tsinwntas/mythras-tools); этот репозиторий развивает их в отдельном форке с листом Mythras Companion.
 
 Mythras и официальные игровые материалы принадлежат **The Design Mechanism**. Поддержать авторов и приобрести книги можно на [thedesignmechanism.com](https://thedesignmechanism.com/). В приложении также используются фанатские материалы [Tools From Pavis](http://toolsfrompavis.com/) и [Notes From Pavis](https://notesfrompavis.blog/). Исходные уведомления об авторах и правах сохранены в приложении.
+
+## Оформление и проверка интерфейса
+
+Общий UI-kit «Агора» описан в [design/UI-KIT.md](design/UI-KIT.md); результаты визуального аудита — в [design/UNSLOP-AUDIT.md](design/UNSLOP-AUDIT.md). Источники темы находятся в `src/ui/`.
+
+В проект установлен навык [unslop](https://github.com/heydamir/unslop) автора Damir Sokolovsky (@heydamir), CC BY 4.0: `.agents/skills/unslop/SKILL.md`. Он используется для проверки и последовательного улучшения интерфейса.

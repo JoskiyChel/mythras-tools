@@ -2,20 +2,20 @@
   <main class="app-container page-wrapper">
     <header class="header app-page-header">
       <a class="brand" routerLink="/menu">
-        <img class="brand-mark" src="assets/icons/adventure.svg" width="48" height="48" alt="">
+        <img class="brand-mark" src="assets/ui/laurel.svg" width="48" height="48" alt="">
         <span>
           MYTHRAS
           <small>
-            TOOLS BY TSINIK
+            Tools · Companion
           </small>
         </span>
       </a>
       <nav class="header-links">
         <a routerLink="/rules-index">
-          Rules index
+          Индекс правил
         </a>
         <a routerLink="/combat-styles">
-          Combat styles
+          Боевые стили
         </a>
       </nav>
     </header>
@@ -28,61 +28,53 @@
     <section class="hero">
       <div>
         <p class="eyebrow">
-          EVERY ADVENTURE BEGINS WITH A CHARACTER
+          Персонажи и инструменты для Mythras
         </p>
         <h1>
-          Bring your next
+          Персонажи Mythras
           <br>
-          legend to life.
+          от замысла до игры
         </h1>
         <p class="hero-copy">
-          Create a character, make it your own, and keep everything you need for your next session in one place.
+          Создайте персонажа, откройте игровой лист и держите навыки, ранения и заклинания под рукой во время игры.
         </p>
         <div class="hero-actions">
-          <button *ngIf="!install.installed" mat-stroked-button (click)="installPanel.open=true; installPanel.scrollIntoView({block:'start',behavior:'smooth'})"><mat-icon>install_mobile</mat-icon>Install app</button>
+
           <button mat-raised-button color="primary" (click)="newChararcter()">
             <mat-icon>
               add
             </mat-icon>
-            Create character
+            Создать персонажа
           </button>
           <button *ngIf="isAlreadyCreatingCharacter()" mat-stroked-button routerLink="/character-creation">
-            Continue draft
+            Продолжить черновик
             <mat-icon>
               arrow_forward
             </mat-icon>
           </button>
         </div>
       </div>
-      <aside class="hero-note">
-        <span class="note-icon">
-          &#10022;
-        </span>
-        <p>
-          Made for your table.
-        </p>
-        <span>
-          Guided creation. Flexible rules.
-          <br>
-          Room for every homebrew idea.
-        </span>
-        <div class="note-divider">
-        </div>
-        <span>
-          Mythras 2nd edition
-        </span>
+      <aside class="hero-note" aria-label="Возможности игрового листа">
+        <div class="note-heading"><img src="assets/ui/laurel.svg" width="48" height="48" alt=""><span>Mythras · 2e</span></div>
+        <p>Mythras Companion</p>
+        <dl class="sheet-preview">
+          <div><dt>Характеристики</dt><dd>STR · CON · SIZ · DEX · INT · POW · CHA</dd></div>
+          <div><dt>Во время игры</dt><dd>Здоровье, ресурсы, усталость и эффекты</dd></div>
+          <div><dt>За игровым столом</dt><dd>Навыки, оружие, магия и заметки</dd></div>
+        </dl>
+        <span class="note-caption">Один персонаж в конструкторе и на листе</span>
       </aside>
     </section>
     <details #installPanel class="install-panel" [open]="install.installed || install.updateAvailable">
-      <summary>{{install.installed ? 'Your installed app' : 'Install on your device'}} <span *ngIf="install.offlineReady">Ready offline</span></summary>
+      <summary>{{install.installed ? 'Установленное приложение' : 'Установка на устройство'}} <span *ngIf="install.offlineReady">Доступно без сети</span></summary>
       <p>Keep Mythras Tools on your home screen and use your characters, creation tools and references offline once the app files are ready.</p>
       <ng-container *ngIf="!install.installed">
         <p *ngIf="install.isAppleMobile"><strong>iPhone / iPad:</strong> In Safari, open Share, choose Add to Home Screen and keep Open as Web App enabled if shown.</p>
         <p *ngIf="!install.isAppleMobile"><strong>Android / other browsers:</strong> Use the install button below when available, or open your browser menu and choose Install app or Add to Home screen.</p>
-        <p><strong>Your saved characters:</strong> Android/Chrome normally keeps the same browser's saves. On iPhone/iPad, the installed app has separate storage: download a library backup here, then use Import JSON inside the home-screen app. Saves do not sync between browsers or devices.</p>
-        <div class="install-actions"><button mat-stroked-button (click)="storage.exportLibrary()"><mat-icon>download</mat-icon>Back up before installing</button><button *ngIf="install.canPrompt" mat-raised-button color="primary" (click)="install.install()">Install Mythras Tools</button></div>
+        <p><strong>Your saved characters:</strong> Android/Chrome normally keeps the same browser's saves. On iPhone/iPad, the installed app has separate storage: download a library backup here, then use Импорт JSON inside the home-screen app. Saves do not sync between browsers or devices.</p>
+        <div class="install-actions"><button *ngIf="install.canPrompt" mat-raised-button color="primary" (click)="install.install()">Установить приложение</button><button mat-stroked-button (click)="storage.exportLibrary()"><mat-icon>download</mat-icon>Back up before installing</button></div>
       </ng-container>
-      <p *ngIf="install.installed">Characters stay on this device. Use the library's Import JSON to bring in a browser backup, and keep occasional JSON backups.</p>
+      <p *ngIf="install.installed">Characters stay on this device. Use the library's Импорт JSON to bring in a browser backup, and keep occasional JSON backups.</p>
       <p *ngIf="!install.offlineReady">Offline files are prepared after opening the published site online. Installation requires HTTPS (GitHub Pages provides it).</p>
       <p *ngIf="install.message" role="status">{{install.message}}</p>
       <div *ngIf="install.updateAvailable" class="install-actions"><span>A new version is ready. Reload when you're ready to switch.</span><button mat-stroked-button (click)="install.applyUpdate()">Reload to update</button></div>
@@ -91,10 +83,10 @@
       <div class="library-heading">
         <div>
           <p class="eyebrow">
-            YOUR ADVENTURERS
+            Библиотека
           </p>
           <h2>
-            Character library
+            Ваши персонажи
             <span class="count">
               {{characters.length}}
             </span>
@@ -106,13 +98,13 @@
             <mat-icon>
               upload
             </mat-icon>
-            Import JSON
+            Импорт JSON
           </button>
           <button mat-stroked-button (click)="storage.exportLibrary()">
             <mat-icon>
               download
             </mat-icon>
-            Back up library
+            Резервная копия
           </button>
         </div>
       </div>
@@ -120,7 +112,7 @@
         <mat-icon>
           save
         </mat-icon>
-        Saved automatically on this device. Download backups to keep a copy outside your browser.
+        Изменения сохраняются в этом браузере. Скачивайте резервные копии, чтобы не потерять персонажей.
       </p>
       <p *ngIf="message || storage.error" class="feedback" role="status">
         {{storage.error || message}}
@@ -129,7 +121,7 @@
         <mat-icon>
           search
         </mat-icon>
-        <input aria-label="Search characters" placeholder="Search by name, player, culture or career..." [(ngModel)]="search">
+        <input aria-label="Поиск персонажей" placeholder="Имя, игрок, культура или карьера" [(ngModel)]="search">
       </label>
       <div class="character-grid" *ngIf="filteredCharacters.length; else empty">
         <article class="character-card" *ngFor="let character of filteredCharacters">
@@ -152,28 +144,28 @@
           </p>
           <div class="card-primary-actions">
             <button mat-flat-button color="primary" (click)="open(character)">
-              Open sheet
+              Открыть лист
             </button>
             <button mat-stroked-button (click)="open(character,true)">
-              Edit
+              Изменить
             </button>
           </div>
           <details class="card-more">
             <summary>
-              Backups & more
+              Другие действия
             </summary>
             <div class="card-tools">
               <button type="button" (click)="download(character)">
-                Download JSON
+                Скачать JSON
               </button>
               <button type="button" (click)="duplicate(character)">
-                Duplicate
+                Создать копию
               </button>
               <button type="button" *ngIf="canRestore(character)" (click)="restore(character)">
-                Restore previous session
+                Восстановить прошлую версию
               </button>
               <button type="button" class="delete" (click)="remove(character)">
-                Delete character
+                Удалить персонажа
               </button>
             </div>
           </details>
@@ -185,13 +177,13 @@
             auto_stories
           </mat-icon>
           <h3>
-            {{search ? 'No matching adventurers' : 'A blank page. A world of possibilities.'}}
+            {{search ? 'Персонажи не найдены' : 'В библиотеке пока нет персонажей'}}
           </h3>
           <p>
-            {{search ? 'Try another name, culture or career.' : 'Create your first character or import an existing JSON save.'}}
+            {{search ? 'Измените запрос или очистите поиск.' : 'Создайте первого персонажа или импортируйте JSON из предыдущей версии.'}}
           </p>
           <button *ngIf="!search" mat-stroked-button (click)="newChararcter()">
-            Create a character
+            Создать персонажа
           </button>
         </div>
       </ng-template>
@@ -203,14 +195,14 @@
         </mat-icon>
         <div>
           <h3>
-            Combat flow
+            Бой
           </h3>
           <p>
-            Keep the action moving, step by step.
+            Порядок действий и боевые правила
           </p>
         </div>
         <span>
-          &#8599;
+          &rarr;
         </span>
       </a>
       <a routerLink="/combat-styles" class="tool-card styles">
@@ -219,14 +211,14 @@
         </mat-icon>
         <div>
           <h3>
-            Combat styles
+            Боевые стили
           </h3>
           <p>
-            Find weapons, styles and traits.
+            Стили, оружие и их особенности
           </p>
         </div>
         <span>
-          &#8599;
+          &rarr;
         </span>
       </a>
       <a routerLink="/rules-index" class="tool-card rules">
@@ -235,14 +227,14 @@
         </mat-icon>
         <div>
           <h3>
-            Rules index
+            Индекс правил
           </h3>
           <p>
-            Find the reference you need.
+            Поиск и пояснения к правилам
           </p>
         </div>
         <span>
-          &#8599;
+          &rarr;
         </span>
       </a>
     </section>

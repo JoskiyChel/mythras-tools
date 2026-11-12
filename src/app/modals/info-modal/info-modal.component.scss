@@ -23,19 +23,19 @@
     position: relative;
 }
 
-:host ::ng-deep .app-info-modal-panel .mat-mdc-dialog-container .mdc-dialog__surface {
+:host::ng-deep .app-info-modal-panel .mat-mdc-dialog-container .mdc-dialog__surface {
     max-height: 92vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
 }
 
-:host ::ng-deep .app-info-modal-panel .mat-mdc-dialog-content.app-modal-content {
+:host::ng-deep .app-info-modal-panel .mat-mdc-dialog-content.app-modal-content {
     overflow: auto !important;
     max-height: calc(92vh - 170px) !important;
 }
 
-:host ::ng-deep .info-modal-content .mat-mdc-form-field {
+:host::ng-deep .info-modal-content .mat-mdc-form-field {
     width: 100%;
 }
 

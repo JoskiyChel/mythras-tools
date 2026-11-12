@@ -1,32 +1,32 @@
 :host { display: block; min-width: 0; }
-.section-intro { color: #62566c; line-height: 1.6; margin-bottom: 20px; }
+.section-intro { color: var(--ui-secondary); line-height: 1.6; margin-bottom: 20px; }
 .money-controls { display: grid; grid-template-columns: minmax(180px, 1fr) auto; align-items: start; gap: 12px 20px; }
 .money-controls mat-form-field { width: 100%; min-width: 0; }
 .money-controls button { min-height: 48px; margin-top: 4px; }
-.money-summary { padding: 20px; margin: 8px 0 28px; background: #f2ecf7; border: 1px solid #dfd2e9; border-radius: 10px; color: #3f2b51; }
-.summary-label { display: block; font-size: 13px; margin-bottom: 6px; }
+.money-summary { padding: 20px; margin: 8px 0 28px; background: var(--ui-canvas); border: 1px solid var(--ui-border); border-radius: 10px; color: var(--ui-accent); }
+.summary-label { display: block; font-size: 13px; margin-bottom: 8px; }
 .money-summary output { display: block; font-size: 30px; line-height: 1.35; font-weight: 500; overflow-wrap: anywhere; }
 .money-summary output span { font-size: 15px; font-weight: 400; white-space: nowrap; }
-.money-summary p { font-size: 13px; margin: 10px 0 0; line-height: 1.5; }
+.money-summary p { font-size: 13px; margin: 8px 0 0; line-height: 1.5; }
 .class-reference-heading { display: flex; align-items: baseline; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 16px; }
 .class-reference-heading h3 { margin: 0; font-size: 20px; }
-.class-reference-heading > span { color: #716278; font-size: 12px; }
+.class-reference-heading > span { color: var(--ui-secondary); font-size: 12px; }
 .social-class-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px; }
-.social-class-card { min-width: 0; border: 1px solid #d8d2c3; border-radius: 10px; padding: 20px; background: #fffdf8; }
-.social-class-card.is-selected { border-color: #9270b3; background: #f9f5fc; box-shadow: inset 3px 0 0 #9270b3; }
+.social-class-card { min-width: 0; border: 1px solid var(--ui-border); border-radius: 10px; padding: 20px; background: var(--ui-surface); }
+.social-class-card.is-selected { border-color:var(--ui-olive); background:var(--ui-olive-soft); box-shadow:inset 3px 0 var(--ui-olive); }
 .social-class-card header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
-.roll-range { display: block; font-size: 12px; color: #716278; margin-bottom: 6px; }
-.social-class-card h4 { font-size: 22px; color: #3b2b48; margin: 0; }
-.money-multiplier { font-size: 13px; color: #604077; background: #ece3f3; padding: 5px 9px; border-radius: 6px; white-space: nowrap; }
+.roll-range { display: block; font-size: 12px; color: var(--ui-secondary); margin-bottom: 8px; }
+.social-class-card h4 { font-size: 22px; color: var(--ui-accent); margin: 0; }
+.money-multiplier { font-size: 13px; color: var(--ui-accent); background: var(--ui-canvas); padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
 .social-class-card dl { margin: 20px 0; }
-.social-class-card dt { font-size: 12px; font-weight: 600; color: #716278; margin-top: 16px; }
+.social-class-card dt { font-size: 12px; font-weight: 600; color: var(--ui-secondary); margin-top: 16px; }
 .social-class-card dd { font-size: 15px; line-height: 1.65; margin: 4px 0 0; overflow-wrap: break-word; }
 .social-class-card button { width: 100%; min-height: 44px; }
-.reference-source { font-size: 12px; color: #716278; margin-top: 24px; }
-.empty-reference { line-height: 1.6; color: #62566c; }
+.reference-source { font-size: 12px; color: var(--ui-secondary); margin-top: 24px; }
+.empty-reference { line-height: 1.6; color: var(--ui-secondary); }
 @media (max-width: 599px) {
   .money-controls { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .money-controls button { width: 100%; margin: 0 0 24px; }
   .social-class-list { grid-template-columns: minmax(0, 1fr); }
-  .social-class-card, .money-summary { padding: 18px; }
+  .social-class-card, .money-summary { padding: 16px; }
 }
