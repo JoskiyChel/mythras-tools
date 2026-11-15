@@ -115,7 +115,7 @@
                 [attr.aria-label]="loc.label + ': здоровье ' + hp(loc.key) + ' из ' + maxHp(loc.key) + ', броня ' + ap(loc.key) + ', d20 ' + loc.roll"
                 [attr.aria-pressed]="selectedLocation===loc.key">
                 <path class="body-location" [attr.d]="loc.path" [attr.fill]="hpColour(loc.key)"/>
-                <g *ngIf="injuryMark(loc.key)" class="injury-glyphs" [attr.transform]="'translate('+(loc.centerX-25)+','+(loc.centerY+26)+')'">
+                <g *ngIf="injuryMark(loc.key)" class="injury-glyphs" [attr.transform]="'translate('+(loc.centerX-25)+','+(loc.centerY+32)+')'">
                   <g *ngFor="let glyph of injuryGlyphsFor(loc.key);let i=index" [attr.transform]="'translate('+(i*14)+',0)'">
                     <path [attr.d]="glyph.path"/><title>{{glyph.label}}</title>
                   </g>
@@ -293,6 +293,7 @@
                     <span>POW: {{powValue}}</span>
                     <span>Intensity / Magnitude: {{cult.intensity}}</span>
                     <span>Exhort: {{cult.exhort}}%</span>
+                    <span>Пул: {{theismPoolSum}} / POW {{powValue}} · свободно {{theismPoolRemaining}}</span>
                   </div>
                   <button class="quiet compact" type="button" *ngIf="cult.manual" (click)="resetDevotionToRank()">Вернуть максимум по рангу</button>
                 </article>
@@ -329,7 +330,7 @@
                   <span>Spirit Damage: {{animism.damage || '—'}}</span>
                   <span>Ранг: {{animism.rank || 'не задан'}}</span>
                 </div>
-                <p class="rule-note">Max POW духа = 3 × Critical Range Binding. Лимит духов: Follower ceil(CHA/4), Spirit Worshipper ceil(CHA/2), Shaman ceil(3·CHA/4), High Shaman и Spirit Lord — CHA. Trance обнаруживает духов в радиусе POW в метрах; вход в мир духов — 1 MP.</p>
+                <p class="rule-note">Max POW духа = 3 × Critical Range Binding. Лимит духов: Follower ceil(CHA/4), Spirit Worshipper ceil(CHA/2), Shaman ceil(3·CHA/4), High Shaman и Spirit Lord — CHA. Trance обнаруживает духов в радиусе POW в метрах; вход в мир духов — 1 MP. Spirit Intensity по POW духа: 1–6 → 0, 7–12 → 1, 13–18 → 2, далее +6 к диапазону POW.</p>
               </div>
               <div class="magic-resource" *ngIf="m.title==='Mysticism · Augmentations'">
                 <h4>Путь и Intensity</h4>

@@ -235,9 +235,12 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
 .augment-options button:hover { background:var(--ui-canvas); }
 .augment-note { margin:8px 0 0; font-size:11px; color:var(--ui-muted); }
 .skills-toggle, .skills-close, .skills-backdrop { display:none; }
+/* The masthead rule sets display on every button, so match its specificity. */
+.masthead-tools button.skills-toggle { display:none; }
 
 @media(max-width:680px) {
   .skills-toggle, .skills-close { display:inline-flex; align-items:center; justify-content:center; min-height:32px; }
+  .masthead-tools button.skills-toggle { display:inline-flex; align-items:center; justify-content:center; }
   .skills-panel { position:fixed; top:0; left:0; bottom:0; z-index:120; width:min(88vw,340px); margin:0; border-radius:0; overflow:auto; transform:translateX(-105%); transition:transform .16s ease-out; }
   .skills-panel.open { transform:translateX(0); }
   .skills-backdrop { display:block; position:fixed; inset:0; z-index:110; background:rgba(25,39,28,.45); }

@@ -20,9 +20,9 @@ import {
   companionState, currentCharacteristic, skillTotal, attributeTotal, damageModifier,
   magicPointMaximum, maxLocationHp, displayedLocationHp, initializePristineHitPoints, movementSummary,
   skillGroups, severity, fatigueRule, canAct, changeLocationHp, findTraditionSkill, shapingPointMaximum,
-  DIFFICULTY_STEPS, DifficultyStep, CheckThresholds, checkThresholds, augmentingBonus, skillModifierTotal,
+  DIFFICULTY_STEPS, DifficultyStep, CheckThresholds, checkThresholds, augmentingBonus,
   WOUND_TYPES, locationInjuries, setLocationInjuries, magicModifier,
-  devotionPoolCapacity, theismPoolLimit, theismIntensity, animismMaxSpiritPow, animismSpiritLimit,
+  theismPoolLimit, theismIntensity, animismMaxSpiritPow, animismSpiritLimit,
   animismSpiritDamage, mysticismTotalIntensity, mysticismTalentIntensity, mysticismTrainedLimit,
   sorceryIntensity, sorceryMemoryLimit, folkMagicStartingSpells,
 } from '../../services/companion-sheet';
@@ -413,6 +413,9 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     }];
   }
   trackCult(_index:number,cult:{name:string}):string {return cult.name;}
+  /** ТЗ §8.1: with several cults this becomes the sum over all adherents. */
+  get theismPoolSum():number {return this.theismAdherents.reduce((sum,cult)=>sum+cult.current,0);}
+  get theismPoolRemaining():number {return Math.max(0,this.powValue-this.theismPoolSum);}
 
   get traditions():Tradition[] {
     const m=this.character.magic;
