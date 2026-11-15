@@ -208,3 +208,40 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
 .weapon-toggle { display:inline-flex; align-items:center; justify-content:center; min-height:36px; min-width:36px; border:0; border-radius:var(--ui-radius-control); background:transparent; color:var(--ui-secondary); }
 .weapon-toggle:hover { background:var(--ui-canvas); }
 @media(max-width:680px) { .body-hp,.body-ap,.body-roll { font-size:18px; } .body-label { font-size:20px; } }
+
+/* Stage 1: hit-location list, wound glyphs, magic facts, mobile drawer. */
+.location-list { display:grid; gap:2px; margin:8px 0; }
+.location-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; gap:8px; align-items:center; text-align:left; background:transparent; border:1px solid transparent; border-radius:6px; padding:6px 8px; font-size:12px; color:var(--ui-ink); }
+.location-row:hover { background:var(--ui-canvas); }
+.location-row.selected { background:var(--ui-olive-soft); border-color:var(--ui-olive); }
+.location-row .loc-name { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.location-row .loc-roll, .location-row .loc-ap { color:var(--ui-secondary); }
+.location-row .loc-injury { grid-column:1/-1; color:var(--ui-danger); font-size:11px; }
+.injury-glyphs path { fill:none; stroke:var(--ui-danger); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.injury-control { display:flex; flex-wrap:wrap; gap:4px 12px; border:1px solid var(--ui-border); border-radius:8px; padding:8px; margin:8px 0 0; }
+.injury-control legend { padding:0 4px; font-size:12px; color:var(--ui-muted); }
+.injury-option { display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--ui-ink); }
+.injury-control small { flex-basis:100%; font-size:11px; color:var(--ui-muted); }
+.resource-facts { display:flex; flex-wrap:wrap; gap:4px 12px; margin:8px 0; font-size:12px; color:var(--ui-secondary); }
+.rule-note { font-size:11px; color:var(--ui-muted); line-height:1.5; }
+.cult-adherent { padding:8px 0; border-bottom:1px solid var(--ui-border); }
+.cult-adherent:last-of-type { border-bottom:0; }
+.cult-adherent h4 { display:flex; justify-content:space-between; gap:8px; }
+.cult-adherent h4 small { font-weight:400; color:var(--ui-muted); }
+.augment-block { border:1px solid var(--ui-border); border-radius:8px; padding:8px; margin:8px 0; background:var(--ui-surface); }
+.augment-current { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:8px; font-size:12px; }
+.augment-options { display:grid; gap:2px; margin-top:8px; max-height:180px; overflow:auto; }
+.augment-options button { display:flex; justify-content:space-between; gap:8px; padding:6px; border:0; border-radius:6px; background:transparent; font-size:12px; text-align:left; color:var(--ui-ink); }
+.augment-options button:hover { background:var(--ui-canvas); }
+.augment-note { margin:8px 0 0; font-size:11px; color:var(--ui-muted); }
+.skills-toggle, .skills-close, .skills-backdrop { display:none; }
+
+@media(max-width:680px) {
+  .skills-toggle, .skills-close { display:inline-flex; align-items:center; justify-content:center; min-height:32px; }
+  .skills-panel { position:fixed; top:0; left:0; bottom:0; z-index:120; width:min(88vw,340px); margin:0; border-radius:0; overflow:auto; transform:translateX(-105%); transition:transform .16s ease-out; }
+  .skills-panel.open { transform:translateX(0); }
+  .skills-backdrop { display:block; position:fixed; inset:0; z-index:110; background:rgba(25,39,28,.45); }
+  .body-svg { display:none; }
+  .location-row { grid-template-columns:minmax(0,1fr) auto auto; }
+  .location-row .loc-ap { grid-column:1/-1; }
+}

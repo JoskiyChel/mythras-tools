@@ -6,6 +6,11 @@ import {
   companionState, maxLocationHp, skillGroups, movementSummary, modifierTotal,
   armourPenalty, fatigueRule, attributeTotal, displayedLocationHp, initializePristineHitPoints, movement,
   changeLocationHp, findTraditionSkill, shapingPointMaximum,
+  augmentingBonus, checkThresholds, difficultyStep, DIFFICULTY_STEPS,
+  devotionPoolCapacity, theismPoolLimit, theismIntensity, animismMaxSpiritPow, animismSpiritLimit,
+  animismSpiritDamage, spiritIntensity, mysticismTotalIntensity, mysticismTalentIntensity,
+  mysticismTrainedLimit, sorceryIntensity, sorceryMemoryLimit, folkMagicStartingSpells,
+  locationInjuries, setLocationInjuries, magicModifier,
 } from './companion-sheet';
 
 describe('Companion sheet / legacy character compatibility', () => {
@@ -186,4 +191,148 @@ describe('Companion sheet / legacy character compatibility', () => {
     expect(findTraditionSkill(c,'Invocation')).toBe(generic);
   });
 
+});
+
+describe('Companion sheet / Mythras check and magic formulas', () => {
+  function character(): CompanionCharacter {
+    return hydrateCharacter({
+      id: 'fixture-formulas', name: 'Formula test',
+      height: '165', frame: '10', weight: '66', movementRate: 6,
+      skills: {str:11,con:11,siz:10,dex:17,int:14,pow:15,cha:13},
+      currentValues: {},
+      equipment: {head:{ap:5,enc:4,type:'Helmet'},weapons:[],items:[]},
+      magic: {folk:[],miracles:[]},
+    }) as CompanionCharacter;
+  }
+
+  it('applies damage above a temporarily lowered maximum without healing (R1)', () => {
+    const c=character();
+    expect(maxLocationHp(c,'chest')).toBe(7);
+    c.currentHitPoints={chest:12};
+    expect(changeLocationHp(c,'chest',-1)).toBe(11); // damage, not clamped to max
+    expect(changeLocationHp(c,'chest',10)).toBe(7);  // healing still stops at max
+    expect(changeLocationHp(c,'chest',-(maxLocationHp(c,'chest')+5))).toBe(-5);
+  });
+
+  it('treats an empty or null armour override as absent, but a real 0 as zero (R3)', () => {
+    const c=character();
+    expect(armourPenalty(c)).toBe(1); // head ENC 4 → ceil(4/5)
+    (c.equipment as any).armorPenalty='';
+    expect(armourPenalty(c)).toBe(1);
+    (c.equipment as any).armorPenalty=null;
+    expect(armourPenalty(c)).toBe(1);
+    (c.equipment as any).armorPenalty=0;
+    expect(armourPenalty(c)).toBe(0);
+    (c.equipment as any).armorPenalty=2;
+    expect(armourPenalty(c)).toBe(2);
+  });
+
+  it('computes augmenting bonus and thresholds from the book examples (ТЗ §11)', () => {
+    expect(augmentingBonus(33)).toBe(7);
+    expect(augmentingBonus(5)).toBe(1);
+    expect(augmentingBonus(0)).toBe(0);
+    expect(augmentingBonus(-5)).toBe(0);
+    const standard=difficultyStep('Standard'), hard=difficultyStep('Hard');
+    expect(checkThresholds(47,standard)).toEqual({mode:'normal',ordinary:47,critical:5,fumbleFrom:99});
+    expect(checkThresholds(40,standard)).toEqual({mode:'normal',ordinary:40,critical:4,fumbleFrom:99});
+    expect(checkThresholds(40,hard)).toEqual({mode:'normal',ordinary:27,critical:3,fumbleFrom:99});
+    expect(checkThresholds(40,standard,33)).toEqual({mode:'normal',ordinary:47,critical:4,fumbleFrom:99});
+    expect(checkThresholds(40,hard,33)).toEqual({mode:'normal',ordinary:32,critical:3,fumbleFrom:99});
+    expect(checkThresholds(40,difficultyStep('Very Easy')).ordinary).toBe(80);
+    expect(checkThresholds(40,difficultyStep('Easy')).ordinary).toBe(60);
+    expect(checkThresholds(40,difficultyStep('Formidable'))).toEqual({mode:'normal',ordinary:20,critical:2,fumbleFrom:99});
+    expect(checkThresholds(40,difficultyStep('Herculean'))).toEqual({mode:'normal',ordinary:4,critical:1,fumbleFrom:99});
+  });
+
+  it('never caps a skill above 100% and narrows Fumble to 00 only above 100', () => {
+    const standard=difficultyStep('Standard');
+    expect(checkThresholds(120,standard).ordinary).toBe(120);
+    expect(checkThresholds(120,standard).critical).toBe(12);
+    expect(checkThresholds(100,standard).fumbleFrom).toBe(99);
+    expect(checkThresholds(120,standard).fumbleFrom).toBe(100);
+    expect(checkThresholds(120,standard,33).fumbleFrom).toBe(100);
+  });
+
+  it('does not produce rollable thresholds for Automatic and Hopeless', () => {
+    expect(checkThresholds(40,difficultyStep('Automatic')))
+      .toEqual({mode:'automatic',ordinary:null,critical:null,fumbleFrom:null});
+    expect(checkThresholds(40,difficultyStep('Hopeless')))
+      .toEqual({mode:'hopeless',ordinary:null,critical:null,fumbleFrom:null});
+    expect(DIFFICULTY_STEPS.map(step=>step.name))
+      .toEqual(['Automatic','Very Easy','Easy','Standard','Hard','Formidable','Herculean','Hopeless']);
+  });
+
+  it('matches the Mythras control values for every magic discipline (ТЗ §11)', () => {
+    expect(devotionPoolCapacity('Lay Member',15)).toBe(0);
+    expect(devotionPoolCapacity('Initiate',15)).toBe(4);
+    expect(devotionPoolCapacity('Acolyte',15)).toBe(8);
+    expect(devotionPoolCapacity('Priest',15)).toBe(12);
+    expect(devotionPoolCapacity('High Priest',15)).toBe(15);
+    expect(theismPoolLimit('Priest',10)).toBe(8); // ceil(7.5)=8, within POW
+    expect(theismIntensity(63)).toBe(7);
+    expect(animismMaxSpiritPow(45)).toBe(15);
+    expect(animismSpiritLimit('Follower',13)).toBe(4);
+    expect(animismSpiritLimit('Spirit Worshipper',13)).toBe(7);
+    expect(animismSpiritLimit('Shaman',13)).toBe(10);
+    expect(animismSpiritLimit('High Shaman',13)).toBe(13);
+    expect(animismSpiritLimit('Spirit Lord',13)).toBe(13);
+    expect(animismSpiritLimit('',13)).toBeNull();
+    expect(animismSpiritDamage(20)).toBe('1d2');
+    expect(animismSpiritDamage(45)).toBe('1d6');
+    expect(animismSpiritDamage(101)).toBe('2d6');
+    expect(animismSpiritDamage(300)).toBe('3d10');
+    expect(animismSpiritDamage(301)).toBeNull(); // continuation is not specified
+    expect(spiritIntensity(6)).toBe(0);
+    expect(spiritIntensity(7)).toBe(1);
+    expect(spiritIntensity(12)).toBe(1);
+    expect(spiritIntensity(13)).toBe(2);
+    expect(spiritIntensity(36)).toBe(5);
+    expect(spiritIntensity(37)).toBe(6);
+    expect(mysticismTalentIntensity(34)).toBe(2);
+    expect(mysticismTotalIntensity(66)).toBe(7);
+    expect(mysticismTrainedLimit(15)).toBe(8);
+    expect(sorceryIntensity(47)).toBe(5);
+    expect(shapingPointMaximum(47)).toBe(5);
+    expect(sorceryMemoryLimit(12)).toBe(12);
+    expect(folkMagicStartingSpells(47)).toBe(3);
+  });
+
+  it('stores several wound types per location and reads a legacy single string (ТЗ §5.4)', () => {
+    const c=character();
+    setLocationInjuries(c,'chest',['Раздроблена']);
+    setLocationInjuries(c,'chest',['Раздроблена','Пронзена']);
+    expect(locationInjuries(c,'chest')).toEqual(['Раздроблена','Пронзена']);
+    expect(locationInjuries(c,'head')).toEqual([]);
+    (c.companion as any).injuries={head:'Отсечена'};
+    expect(locationInjuries(c,'head')).toEqual(['Отсечена']);
+    setLocationInjuries(c,'head',[]);
+    expect(locationInjuries(c,'head')).toEqual([]);
+    expect((c.companion as any).injuries.head).toBeUndefined();
+  });
+
+  it('targets one of two same-named skills when the modifier carries a skill id (R2)', () => {
+    const c=character();
+    const first=Object.assign(new Skill('Lore',true,'int','pow'),{extraBonus:0,force:true,id:'skill-a'});
+    const second=Object.assign(new Skill('Lore',true,'int','pow'),{extraBonus:0,force:true,id:'skill-b'});
+    c.skills.specialized.push(first,second);
+    const baseA=skillTotal(c,first), baseB=skillTotal(c,second);
+    companionState(c).effects=[{id:'targeted',name:'Study',duration:'',
+      modifiers:[{kind:'skill',key:'skill-a',amount:5,skillId:'skill-a'}]}];
+    expect(skillTotal(c,first)).toBe(baseA+5);
+    expect(skillTotal(c,second)).toBe(baseB);
+    // A legacy modifier without an id keeps the name-wide behaviour.
+    companionState(c).effects=[{id:'legacy',name:'Old effect',duration:'',
+      modifiers:[{kind:'skill',key:'Lore',amount:3}]}];
+    expect(skillTotal(c,first)).toBe(baseA+3);
+    expect(skillTotal(c,second)).toBe(baseB+3);
+  });
+
+  it('adds magic-statistic modifiers on top of computed discipline values', () => {
+    const c=character();
+    companionState(c).effects=[{id:'magic',name:'Blessing',duration:'',
+      modifiers:[{kind:'magic',key:'theism.poolMax',amount:2}]}];
+    expect(magicModifier(c,'theism.poolMax')).toBe(2);
+    expect(magicModifier(c,'sorcery.shapingPoints')).toBe(0);
+    expect(theismPoolLimit('Acolyte',15)+magicModifier(c,'theism.poolMax')).toBe(10);
+  });
 });

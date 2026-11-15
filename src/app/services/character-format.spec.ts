@@ -94,3 +94,43 @@ describe('Legacy character compatibility', () => {
         expect(getTotalFromItems(character, 'cost')).toBe(35);
     });
 });
+
+describe('Companion save migrations', () => {
+    const base = () => ({ id: 'migration-test', name: 'Migrated', skills: { str: 11, con: 11, siz: 10, dex: 11, int: 11, pow: 11, cha: 11 } });
+
+    it('turns a legacy injury string into a list, idempotently', () => {
+        const saved = { ...base(), companion: { injuries: { chest: 'Раздроблена', head: '' } } };
+        const once = hydrateCharacter(JSON.parse(JSON.stringify(saved))) as any;
+        expect(once.companion.injuries.chest).toEqual(['Раздроблена']);
+        expect(once.companion.injuries.head).toBeUndefined();
+        const twice = hydrateCharacter(JSON.parse(JSON.stringify(once))) as any;
+        expect(twice.companion.injuries).toEqual({ chest: ['Раздроблена'] });
+    });
+
+    it('keeps several wound types on one location', () => {
+        const saved = { ...base(), companion: { injuries: { chest: ['Раздроблена', 'Пронзена'] } } };
+        const character = hydrateCharacter(JSON.parse(JSON.stringify(saved))) as any;
+        expect(character.companion.injuries.chest).toEqual(['Раздроблена', 'Пронзена']);
+    });
+
+    it('assigns a stable id only to skills whose names collide, and keeps it on round-trip', () => {
+        const saved = {
+            ...base(),
+            skills: { ...base().skills, specialized: [
+                { name: 'Lore', professional: true, base: ['int', 'pow'], extraBonus: 10 },
+                { name: 'Lore', professional: true, base: ['int', 'pow'], extraBonus: 20 },
+                { name: 'Star Reading', professional: true, base: ['int', 'pow'], extraBonus: 5 },
+            ] },
+        };
+        const first = hydrateCharacter(JSON.parse(JSON.stringify(saved)));
+        const lore = first.skills.specialized.filter(skill => skill.name === 'Lore');
+        expect(lore.length).toBe(2);
+        expect(lore[0].id).toBeTruthy();
+        expect(lore[1].id).toBeTruthy();
+        expect(lore[0].id).not.toBe(lore[1].id);
+        expect(first.skills.specialized.find(skill => skill.name === 'Star Reading')!.id).toBeUndefined();
+        const again = hydrateCharacter(JSON.parse(JSON.stringify(first)));
+        const loreAgain = again.skills.specialized.filter(skill => skill.name === 'Lore');
+        expect(loreAgain.map(skill => skill.id)).toEqual(lore.map(skill => skill.id));
+    });
+});

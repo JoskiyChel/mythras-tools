@@ -1,13 +1,13 @@
 import { Character } from '../model/character';
 import { Skill } from '../model/skill';
 import { getSkillTotal } from './character-service.service';
+import { HIT_LOCATION_RULES, HitLocation } from './hit-locations';
 
-export const HIT_LOCATIONS = [
-  {key:'head', label:'Head'}, {key:'chest', label:'Chest'}, {key:'abdoment', label:'Abdomen'},
-  {key:'leftArm', label:'Left arm'}, {key:'rightArm', label:'Right arm'},
-  {key:'leftLeg', label:'Left leg'}, {key:'rightLeg', label:'Right leg'},
-] as const;
-export type HitLocation = typeof HIT_LOCATIONS[number]['key'];
+export type { HitLocation };
+
+/** Same order as the sheet (ТЗ §5.1); English labels are kept for the legacy viewer. */
+export const HIT_LOCATIONS: {key: HitLocation; label: string}[] =
+  HIT_LOCATION_RULES.map(rule => ({key: rule.key, label: rule.labelEn}));
 
 export function getCurrentHp(character: Character, location: HitLocation): number | string {
   return character.currentHitPoints?.[location] ?? '';

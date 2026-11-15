@@ -2,6 +2,7 @@
   <header class="masthead">
     <div class="masthead-brand">Mythras <small>Companion</small></div>
     <div class="masthead-tools">
+      <button class="skills-toggle" type="button" (click)="skillsOpen=!skillsOpen" [attr.aria-expanded]="skillsOpen" aria-controls="companion-skills">Навыки</button>
       <a routerLink="/menu">Библиотека</a>
       <a routerLink="/view">PDF / Печать</a>
       <button type="button" (click)="editInBuilder()">Конструктор</button>
@@ -11,13 +12,16 @@
   <div class="save-status" role="status">{{storage.error || 'Изменения сохраняются автоматически в этом браузере.'}}</div>
   <div class="sheet-layout">
     <!-- Skills column: no sticky duplicate of Resistances -->
-    <aside class="card skills-panel">
+    <aside class="card skills-panel" id="companion-skills" [class.open]="skillsOpen">
       <div class="card-title">
         <h2>Навыки</h2>
-        <div class="inline-actions" *ngIf="!upgrade"><button class="primary compact" type="button" (click)="beginUpgrade()">＋ Прокачка</button></div>
-        <div class="inline-actions" *ngIf="upgrade">
-          <button class="quiet compact" type="button" (click)="discardUpgrade()">Отмена</button>
-          <button class="primary compact" type="button" [disabled]="!hasUpgrade" (click)="applyUpgrade()">Применить</button>
+        <div class="inline-actions">
+          <button class="skills-close" type="button" (click)="skillsOpen=false" aria-label="Закрыть панель навыков">×</button>
+          <ng-container *ngIf="!upgrade"><button class="primary compact" type="button" (click)="beginUpgrade()">＋ Прокачка</button></ng-container>
+          <ng-container *ngIf="upgrade">
+            <button class="quiet compact" type="button" (click)="discardUpgrade()">Отмена</button>
+            <button class="primary compact" type="button" [disabled]="!hasUpgrade" (click)="applyUpgrade()">Применить</button>
+          </ng-container>
         </div>
       </div>
       <div class="panel-content">
@@ -26,7 +30,7 @@
         <section class="skill-group" *ngFor="let group of groups;trackBy:trackGroup">
           <h3 *ngIf="group.skills.length">{{group.name}}</h3>
           <div class="skill-row" *ngFor="let skill of group.skills; trackBy:trackSkill">
-            <button class="skill-name" type="button" (click)="activeSkill=skill" [title]="skill.name">{{skill.name}}</button>
+            <button class="skill-name" type="button" (click)="openSkill(skill)" [title]="skill.name">{{skill.name}}</button>
             <div class="skill-value">
               <ng-container *ngIf="upgrade">
                 <span class="value-old">{{oldSkillValue(skill)}}</span>
@@ -37,7 +41,7 @@
                 <button class="step" type="button" (click)="alterSkill(skill,-1)" aria-label="Уменьшить навык">−</button>
                 <button class="step" type="button" (click)="alterSkill(skill,1)" aria-label="Повысить навык">+</button>
               </ng-container>
-              <button class="percent" type="button" (click)="activeSkill=skill">{{skillValue(skill)}}%</button>
+              <button class="percent" type="button" (click)="openSkill(skill)">{{skillValue(skill)}}%</button>
             </div>
           </div>
         </section>
@@ -50,6 +54,7 @@
         </section>
       </div>
     </aside>
+    <div class="skills-backdrop" *ngIf="skillsOpen" (click)="skillsOpen=false" aria-hidden="true"></div>
 
     <main class="companion-main">
       <section class="card character-card">
@@ -106,11 +111,15 @@
             </div>
             <svg class="body-svg" viewBox="0 0 520 550" aria-label="Семь локаций тела — выберите часть фигуры">
               <g *ngFor="let loc of locations;trackBy:trackLocation" class="location-target" [class.selected]="selectedLocation===loc.key"
-                (click)="selectedLocation=loc.key" (keydown)="onSvgKey($event,loc.key)" tabindex="0" role="button"
+                (click)="selectLocation(loc.key)" (keydown)="onSvgKey($event,loc.key)" tabindex="0" role="button"
                 [attr.aria-label]="loc.label + ': здоровье ' + hp(loc.key) + ' из ' + maxHp(loc.key) + ', броня ' + ap(loc.key) + ', d20 ' + loc.roll"
                 [attr.aria-pressed]="selectedLocation===loc.key">
                 <path class="body-location" [attr.d]="loc.path" [attr.fill]="hpColour(loc.key)"/>
-                <path *ngIf="injuryMark(loc.key)" class="wound-mark" [attr.d]="'M'+(loc.centerX-10)+' '+(loc.centerY-30)+'l11 10 -6 9 13 6'"/>
+                <g *ngIf="injuryMark(loc.key)" class="injury-glyphs" [attr.transform]="'translate('+(loc.centerX-25)+','+(loc.centerY+26)+')'">
+                  <g *ngFor="let glyph of injuryGlyphsFor(loc.key);let i=index" [attr.transform]="'translate('+(i*14)+',0)'">
+                    <path [attr.d]="glyph.path"/><title>{{glyph.label}}</title>
+                  </g>
+                </g>
                 <rect class="body-value-backing" [attr.x]="loc.centerX-29" [attr.y]="loc.centerY-15" width="58" height="39" rx="5"/>
                 <svg [attr.x]="loc.centerX-25" [attr.y]="loc.centerY-11" width="14" height="14" class="body-stat-icon" aria-hidden="true"><use href="assets/ui/sheet-icons.svg#heart"/></svg>
                 <text class="body-hp" [attr.x]="loc.centerX+7" [attr.y]="loc.centerY+1">{{hp(loc.key)}}/{{maxHp(loc.key)}}</text>
@@ -128,14 +137,27 @@
                 <path d="M199 132 q-8 20 -8 37 M188 236 l-12 37 M321 132 q8 20 8 37 M332 236 l12 37 M228 309 q5 30 1 49 M292 309 q-5 30 -1 49 M224 423 q-4 31 1 55 M296 423 q4 31 -1 55 M218 513 l15 4 M302 513 l-15 4"/>
               </g>
             </svg>
+            <!-- Locations are selectable from the list as well; this stays usable
+                 when the diagram is hidden on a narrow screen (ТЗ §5.2). -->
+            <div class="location-list" role="listbox" aria-label="Локации попаданий">
+              <button *ngFor="let loc of locations;trackBy:trackLocation" type="button" role="option"
+                class="location-row" [class.selected]="selectedLocation===loc.key"
+                [attr.aria-selected]="selectedLocation===loc.key" (click)="selectLocation(loc.key)">
+                <span class="loc-name">{{loc.label}}</span>
+                <span class="loc-roll">d20 {{loc.roll}}</span>
+                <span class="loc-hp">{{hp(loc.key)}}/{{maxHp(loc.key)}} HP</span>
+                <span class="loc-ap">AP {{ap(loc.key)}}</span>
+                <span class="loc-injury" *ngIf="injuryMark(loc.key)">{{injuryText(loc.key)}}</span>
+              </button>
+            </div>
             <div class="healing-rate"><span>Скорость лечения</span><strong>{{attr('healing')}}</strong></div>
             <div class="location-editor">
-              <div><strong>{{selectedLocation==='abdoment'?'Живот':selectedLocation==='rightArm'?'Правая рука':selectedLocation==='leftArm'?'Левая рука':selectedLocation==='rightLeg'?'Правая нога':selectedLocation==='leftLeg'?'Левая нога':selectedLocation==='head'?'Голова':'Грудь'}}</strong>
+              <div><strong>{{selectedLabel}}</strong>
                 <small>{{currentHp}} / {{maxHp(selectedLocation)}} HP · AP {{ap(selectedLocation)}}</small></div>
               <div class="hp-edit-controls">
                 <div class="control-pair">
-                  <button type="button" (click)="adjustSelectedHp(-1)" [disabled]="!hpAmountValid" [attr.aria-label]="'Нанести ' + hpAmount + ' урона: ' + selectedLocation">− HP</button>
-                  <button type="button" (click)="adjustSelectedHp(1)" [disabled]="!hpAmountValid" [attr.aria-label]="'Вылечить ' + hpAmount + ' HP: ' + selectedLocation">＋ HP</button>
+                  <button type="button" (click)="adjustSelectedHp(-1)" [disabled]="!hpAmountValid || upgrade" [attr.aria-label]="'Нанести ' + hpAmount + ' урона: ' + selectedLocation">− HP</button>
+                  <button type="button" (click)="adjustSelectedHp(1)" [disabled]="!hpAmountValid || upgrade" [attr.aria-label]="'Вылечить ' + hpAmount + ' HP: ' + selectedLocation">＋ HP</button>
                 </div>
                 <label class="hp-amount-label" for="companion-hp-amount">HP за нажатие
                   <input id="companion-hp-amount" type="number" min="1" max="999" step="1" [(ngModel)]="hpAmount" [attr.aria-invalid]="!hpAmountValid" aria-describedby="companion-hp-amount-help"/>
@@ -143,10 +165,13 @@
                 <small class="hp-amount-help" id="companion-hp-amount-help" *ngIf="!hpAmountValid">Укажите целое число от 1 до 999.</small>
               </div>
             </div>
-            <label class="injury-control">
-              Последствие травмы
-              <select [(ngModel)]="injury"><option value="">Не указано</option><option value="Отсечена">Отсечена</option><option value="Раздроблена">Раздроблена</option><option value="Пронзена">Пронзена</option></select>
-            </label>
+            <fieldset class="injury-control">
+              <legend>Последствия травмы: {{selectedLabel}}</legend>
+              <label class="injury-option" *ngFor="let type of woundTypes">
+                <input type="checkbox" [checked]="hasInjury(type)" (change)="toggleInjury(type)"> {{type}}
+              </label>
+              <small *ngIf="!injuryMark(selectedLocation)">Повреждений нет</small>
+            </fieldset>
           </div>
 
           <!-- Effects column -->
@@ -187,7 +212,7 @@
               <div class="effect-modifier-heading">Модификаторы <span>(необязательно)</span></div>
               <div class="modifier-row" *ngFor="let mod of newModifiers;let i=index">
                 <select [ngModel]="mod.kind" (ngModelChange)="setModifierKind(mod,$event)" [attr.aria-label]="'Тип модификатора '+(i+1)">
-                  <option value="characteristic">Характеристика</option><option value="skill">Навык</option><option value="attribute">Атрибут</option>
+                  <option value="characteristic">Характеристика</option><option value="skill">Навык</option><option value="attribute">Атрибут</option><option value="magic">Магия</option>
                 </select>
                 <select [ngModel]="mod.key" (ngModelChange)="setModifierKey(mod,$event)" [attr.aria-label]="'Цель модификатора '+(i+1)">
                   <option *ngFor="let option of modifierOptions(mod.kind);trackBy:trackModifierOption" [value]="option.key">{{option.label}}</option>
@@ -215,7 +240,7 @@
             <div class="combat-styles">
               <article *ngFor="let style of styles;trackBy:trackSkill" class="combat-style">
                 <div class="style-heading">
-                  <button type="button" class="style-skill" (click)="activeSkill=style" [attr.aria-label]="'Сложности боевого стиля '+style.name">{{style.name}} <strong>{{skillValue(style)}}%</strong></button>
+                  <button type="button" class="style-skill" (click)="openSkill(style)" [attr.aria-label]="'Сложности боевого стиля '+style.name">{{style.name}} <strong>{{skillValue(style)}}%</strong></button>
                   <button type="button" class="style-info" (click)="openStyleDescription(style)" [attr.aria-label]="'Описание боевого стиля '+style.name"><span class="material-icons ui-icon" aria-hidden="true">info_outline</span> Описание</button>
                 </div>
                 <div class="style-trait" *ngIf="style.selectedTrait?.name">Черта: <button type="button" class="rule-link" (click)="openStyleTrait(style)">{{style.selectedTrait.name}}</button></div>
@@ -258,13 +283,63 @@
                 </button>
               </div>
               <div class="magic-resource" *ngIf="m.title==='Theism'">
-                <h4>Devotion Pool</h4>
-                <div class="devotion-fields"><label>Текущий <input type="number" min="0" [max]="devotionMaximum" [ngModel]="devotionCurrent" (ngModelChange)="setDevotionCurrent($event)" aria-label="Текущий Devotion Pool"></label><span>/</span><label>Максимум <input type="number" min="0" [ngModel]="devotionMaximum" (ngModelChange)="setDevotionMaximum($event)" aria-label="Максимальный Devotion Pool"></label></div>
-                <p>Максимум задаётся по рангу в культе. Текущий запас сохраняется с персонажем.</p>
+                <article class="cult-adherent" *ngFor="let cult of theismAdherents;trackBy:trackCult">
+                  <h4>{{cult.name}} <small *ngIf="cult.manual">максимум: {{cult.maximum}} (вручную)</small></h4>
+                  <div class="devotion-fields"><label>Текущий <input type="number" min="0" [max]="cult.maximum" [ngModel]="cult.current" (ngModelChange)="setDevotionCurrent($event)" aria-label="Текущий Devotion Pool"></label><span>/</span><label>Максимум <input type="number" min="0" [ngModel]="cult.maximum" (ngModelChange)="setDevotionMaximum($event)" aria-label="Максимальный Devotion Pool"></label></div>
+                  <div class="resource-facts">
+                    <span>Ранг: {{cult.rank || 'не задан'}}</span>
+                    <span>По рангу: {{cult.capacity}}</span>
+                    <span>Devotion: {{cult.value}}%</span>
+                    <span>POW: {{powValue}}</span>
+                    <span>Intensity / Magnitude: {{cult.intensity}}</span>
+                    <span>Exhort: {{cult.exhort}}%</span>
+                  </div>
+                  <button class="quiet compact" type="button" *ngIf="cult.manual" (click)="resetDevotionToRank()">Вернуть максимум по рангу</button>
+                </article>
+                <p>Максимум считается по рангу (ТЗ §8.2) и может быть изменён эффектом. Текущий запас сохраняется с персонажем; сумма пулов всех теистических культов не может превышать POW.</p>
+                <p class="rule-note">Стоимость обращения: Initiate 1 MP / 1 ход, Acolyte 2 MP / 2 хода, Priest 3 MP / 3 хода. Critical успех — бесплатно, Failure — без расхода, Fumble — потеря 1 MP.</p>
+              </div>
+              <div class="magic-resource" *ngIf="m.title==='Folk Magic'">
+                <h4>Заклинания Folk Magic</h4>
+                <div class="resource-facts">
+                  <span>Навык: {{folkMagic.value}}%</span>
+                  <span>Известно: {{folkMagic.known}}</span>
+                  <span>При создании: {{folkMagic.starting}}</span>
+                  <span>Intensity / Magnitude: 1 / 1</span>
+                </div>
+                <p>При создании — одно заклинание за каждые 20% или неполные 20% навыка; для профессий, специально связанных с Folk Magic, — за каждые 10%. Применение — 1 ход: успех 1 MP, critical 0, failure 1 MP, fumble 1d3.</p>
               </div>
               <div class="magic-resource shaping-points" *ngIf="m.title==='Sorcery'">
                 <h4>Очки формирования <strong>{{shapingPoints}}</strong></h4>
+                <div class="resource-facts">
+                  <span>Invocation: {{sorcery.invocation}}%</span>
+                  <span>Intensity: {{sorcery.intensity}}</span>
+                  <span>Базовая Magnitude: 1</span>
+                  <span>Память: {{sorcery.known}} / {{sorcery.memoryLimit}} (INT)</span>
+                </div>
                 <p>Shaping {{relatedSkill('Shaping') || 0}}% ÷ 10, округление вверх. Лимит для формирования заклинания.</p>
+                <p class="rule-note">Компоненты Shaping: Combine, Duration, Magnitude, Range, Targets. Концентрация — только на одном заклинании. Стоимость: 1 + изменённые компоненты + дополнительные заклинания; при Critical — половина, округлённая вверх.</p>
+              </div>
+              <div class="magic-resource" *ngIf="m.title==='Animism'">
+                <h4>Духи</h4>
+                <div class="resource-facts">
+                  <span>Радиус обнаружения: {{animism.radius}} м</span>
+                  <span>Максимальный POW духа: {{animism.maxSpiritPow}}</span>
+                  <span>Связанных духов: {{animism.limit === null ? 'ранг не задан' : 'до ' + animism.limit}}</span>
+                  <span>Spirit Damage: {{animism.damage || '—'}}</span>
+                  <span>Ранг: {{animism.rank || 'не задан'}}</span>
+                </div>
+                <p class="rule-note">Max POW духа = 3 × Critical Range Binding. Лимит духов: Follower ceil(CHA/4), Spirit Worshipper ceil(CHA/2), Shaman ceil(3·CHA/4), High Shaman и Spirit Lord — CHA. Trance обнаруживает духов в радиусе POW в метрах; вход в мир духов — 1 MP.</p>
+              </div>
+              <div class="magic-resource" *ngIf="m.title==='Mysticism · Augmentations'">
+                <h4>Путь и Intensity</h4>
+                <div class="resource-facts">
+                  <span>Путь: {{mysticism.path || 'не задан'}}</span>
+                  <span>Доступная суммарная Intensity: {{mysticism.totalIntensity}}</span>
+                  <span>Максимум одного таланта: {{mysticism.talentIntensity}}</span>
+                  <span>Тренируемых талантов: до {{mysticism.trainedLimit}}</span>
+                </div>
+                <p class="rule-note">Суммарная Intensity ограничена Meditation: ceil(Meditation/10); отдельный талант — ceil(Mysticism/20); одновременно тренируется не больше ceil(POW/2) талантов всех путей.</p>
               </div>
               <div class="spell" *ngFor="let spell of m.spells;let i=index;trackBy:trackSpell">
                 <button type="button" (click)="openedSpell=openedSpell===m.title+i?'':m.title+i">{{spell.name}} <span class="material-icons ui-icon" aria-hidden="true">{{openedSpell===m.title+i?'expand_less':'expand_more'}}</span></button>
@@ -304,7 +379,33 @@
   <div class="dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-label="Сложности навыка">
     <header><div><small>Проверка навыка</small><h2>{{activeSkill.name}}</h2></div><button type="button" (click)="activeSkill=null" aria-label="Закрыть">×</button></header>
     <div class="dialog-body"><div class="dialog-result"><span>Текущее значение</span><strong>{{skillValue(activeSkill)}}%</strong></div>
-      <div class="difficulty-grid"><div *ngFor="let difficulty of difficulties"><span>{{difficulty.name}}</span><strong>{{difficultyTarget(difficulty.multiplier)}}%</strong></div></div>
+      <div class="augment-block">
+        <label class="field-label" for="companion-augment">Вспомогательный навык (не более одного)
+          <input id="companion-augment" class="search-field" type="search" [(ngModel)]="augmentQuery" placeholder="Поиск навыка…" autocomplete="off">
+        </label>
+        <div class="augment-current" *ngIf="augmentSkill">
+          <span>{{augmentSkill.name}} {{augmentValue}}% → бонус +{{augmentBonus}}</span>
+          <button type="button" class="quiet compact" (click)="clearAugment()">Убрать</button>
+        </div>
+        <div class="augment-options" *ngIf="!augmentSkill && augmentQuery.trim()">
+          <button type="button" *ngFor="let candidate of augmentCandidates" (click)="chooseAugment(candidate)">
+            <span>{{candidate.name}}</span><span>{{skillValue(candidate)}}%</span>
+          </button>
+          <p class="empty-state" *ngIf="!augmentCandidates.length">Ничего не найдено.</p>
+        </div>
+        <p class="augment-note">Прибавка входит в обычный шанс успеха, но не меняет Critical и Fumble.</p>
+      </div>
+      <div class="difficulty-grid">
+        <div *ngFor="let difficulty of difficulties">
+          <span>{{difficulty.name}}</span>
+          <ng-container *ngIf="thresholds(difficulty) as check">
+            <strong *ngIf="check.mode==='normal'">{{check.ordinary}}%</strong>
+            <strong *ngIf="check.mode==='automatic'">Бросок не требуется</strong>
+            <strong *ngIf="check.mode==='hopeless'">Невозможно</strong>
+            <small *ngIf="check.mode==='normal'">Critical ≤ {{check.critical}} · Fumble {{check.fumbleFrom}}–00</small>
+          </ng-container>
+        </div>
+      </div>
     </div>
   </div>
 </div>

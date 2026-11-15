@@ -2,6 +2,7 @@ import { Character } from '../model/character';
 import { Skill } from '../model/skill';
 import { MysticPath } from '../model/mystic-path';
 import { restoreLegacyCurrentHp } from './hit-points';
+import { v4 as uuidv4 } from 'uuid';
 function record(value: any): value is Record<string, any> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -70,8 +71,51 @@ export function hydrateCharacter(saved: unknown): Character {
         if (!Array.isArray((character.equipment as any)[key]))
             (character.equipment as any)[key] = [];
     }
+    migrateCompanionInjuries(character);
+    ensureDuplicateSkillIds(character);
     restoreLegacyCurrentHp(character);
     return character;
+}
+
+// Injuries are now a list per location: a location may be crushed and impaled at
+// the same time. Legacy saves hold one string, which becomes a one-item list.
+// Idempotent: arrays are left untouched.
+function migrateCompanionInjuries(character: Character): void {
+    const injuries = (character as any).companion?.injuries;
+    if (!record(injuries))
+        return;
+    for (const key of Object.keys(injuries)) {
+        const value: unknown = injuries[key];
+        if (typeof value === 'string') {
+            if (value)
+                injuries[key] = [value];
+            else
+                delete injuries[key];
+        }
+        else if (!Array.isArray(value))
+            delete injuries[key];
+        else if (!value.length)
+            delete injuries[key];
+    }
+}
+
+// Effects address skills by name. When several skills share a name, a stable id is
+// needed to target one of them; ids are only created for those conflicts and then
+// round-trip through JSON. Existing ids are preserved.
+function ensureDuplicateSkillIds(character: Character): void {
+    const lists: Skill[][] = [character.skills.skills, character.skills.specialized,
+        character.skills.combatstyles, character.skills.extraProfessionalCultureSkills,
+        character.skills.extraProfessionalCareerSkills];
+    if (character.skills.hobby)
+        lists.push([character.skills.hobby]);
+    const all = lists.flat().filter((skill): skill is Skill => Boolean(skill));
+    const counts = new Map<string, number>();
+    for (const skill of all)
+        counts.set(skill.name, (counts.get(skill.name) || 0) + 1);
+    for (const skill of all) {
+        if ((counts.get(skill.name) || 0) > 1 && !skill.id)
+            skill.id = uuidv4();
+    }
 }
 export function parseCharacterFile(text: string): Character[] {
     const parsed = JSON.parse(text.replace(/^\uFEFF/, ''));

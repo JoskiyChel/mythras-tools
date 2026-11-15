@@ -45,11 +45,18 @@ describe('Companion permanent advancement', () => {
     expect(JSON.stringify(component.character)).toBe(before);
     expect(component.hasUpgrade).toBeFalse();
   });
-  it('keeps a permanent injury visible after HP are healed', () => {
-    component.character.companion = {injuries: {chest: 'Раздроблена'}};
+  it('keeps permanent injuries visible after HP are healed, with several types per location', () => {
+    component.character.companion = {injuries: {chest: ['Раздроблена']}};
     component.character.currentHitPoints = {chest: 7};
     expect(component.injuryMark('chest')).toBeTrue();
     expect(component.injuryMark('head')).toBeFalse();
+    component.character.companion = {injuries: {chest: ['Раздроблена','Пронзена']}};
+    expect(component.injuryText('chest')).toBe('Раздроблена, Пронзена');
+    expect(component.injuryGlyphsFor('chest').map(glyph=>glyph.type)).toEqual(['Раздроблена','Пронзена']);
+    // Lost HP alone is not an injury (ТЗ §5.4).
+    component.character.companion = {};
+    component.character.currentHitPoints = {chest: -5};
+    expect(component.injuryMark('chest')).toBeFalse();
   });
 
   it('retains skill and magic buttons across change detection for focus restoration', () => {

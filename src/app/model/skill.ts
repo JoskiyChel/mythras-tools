@@ -1,5 +1,7 @@
 export class Skill {
     name : string;
+    /** Stable identity, assigned only when several skills share one name. */
+    id? : string;
     professional : boolean;
     custom?: boolean;
     force : boolean;
