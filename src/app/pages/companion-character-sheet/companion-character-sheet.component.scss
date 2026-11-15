@@ -248,3 +248,108 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
   .location-row { grid-template-columns:minmax(0,1fr) auto auto; }
   .location-row .loc-ap { grid-column:1/-1; }
 }
+
+/* V4: compact sheet. Plate on the left, all numbers in one column on the right,
+   so no zone is stretched to the height of the tallest one. */
+.character-columns { display:grid; grid-template-columns:minmax(360px,440px) minmax(0,1fr); align-items:stretch; gap:0; }
+.body-zone { display:flex; flex-direction:column; min-width:0; padding:12px; border-left:0; border-right:1px solid var(--ui-border); }
+.info-zone { display:flex; flex-direction:column; min-width:0; }
+.summary-zone { padding:12px 16px 14px; }
+.effects-zone { flex:1; padding:12px 16px 14px; border-left:0; border-top:1px solid var(--ui-border); }
+.zone-title { margin-bottom:6px; }
+
+.topline { display:grid; grid-template-columns:minmax(0,1fr) minmax(240px,.52fr); gap:12px; align-items:end; }
+.characteristics { display:grid; grid-template-columns:repeat(7,minmax(40px,72px)); justify-content:start; gap:6px; margin:0; }
+.characteristic { padding:4px 2px; }
+.characteristic>span { font-size:10px; }
+.characteristic>strong { font-size:17px; line-height:20px; }
+.identity-mini { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:0; }
+.identity-mini label { font-size:11px; }
+.identity-mini input { min-height:30px; margin-top:2px; padding:4px 6px; font-size:12px; }
+
+.numbers-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:10px; }
+.attribute-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:0; }
+.attribute { min-height:52px; padding:6px 8px; }
+.attribute small { font-size:11px; }
+.attribute strong { margin-top:2px; font-size:16px; line-height:19px; }
+.attribute .footnote { font-size:10px; }
+.resources-block { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; align-content:start; }
+.resource { padding:6px 8px; }
+.resource small { font-size:10px; }
+.resource strong { font-size:16px; line-height:19px; }
+.meta-line { grid-column:1/-1; display:flex; justify-content:space-between; gap:8px; padding:2px 2px 0; font-size:11px; color:var(--ui-secondary); }
+.meta-line strong { color:var(--ui-ink); font-weight:500; font-variant-numeric:tabular-nums; }
+
+/* Anatomical plate: a neutral stone panel with one figure on it. */
+.plate-row { display:grid; grid-template-columns:minmax(170px,190px) minmax(0,1fr); gap:10px; align-items:start; }
+.body-svg { display:block; width:100%; max-width:190px; height:auto; margin:0 auto; }
+.body-plate { fill:var(--ui-canvas); stroke:var(--ui-border); stroke-width:1; }
+.body-joint { fill:#e9dfcb; stroke:none; }
+.body-location { stroke:#98866a; stroke-width:1.6; transition:fill .16s ease-out; }
+.location-target { cursor:pointer; outline:none; }
+.location-target:hover .body-location { stroke:var(--ui-olive); stroke-width:2.2; }
+.location-target.selected .body-location, .location-target:focus-visible .body-location { stroke:var(--ui-olive); stroke-width:2.4; }
+.body-value-backing { fill:var(--ui-surface); opacity:.92; pointer-events:none; }
+.body-hp, .body-ap { text-anchor:middle; pointer-events:none; font-variant-numeric:tabular-nums; }
+.body-hp { font-size:11px; font-weight:600; fill:var(--ui-ink); paint-order:stroke; stroke:var(--ui-surface); stroke-width:3px; stroke-linejoin:round; }
+.body-ap { font-size:10px; fill:var(--ui-secondary); }
+
+/* A wound is drawn on the injured part, never as a badge next to it. */
+.wound-crush { stroke:none; pointer-events:none; }
+.wound-impale line { stroke:var(--ui-danger); stroke-width:2.4; stroke-linecap:round; pointer-events:none; }
+.wound-impale circle { fill:var(--ui-danger); pointer-events:none; }
+.wound-seam { fill:none; stroke:#7d3040; stroke-width:3; stroke-linecap:round; pointer-events:none; }
+.location-target.is-severed .body-location { stroke:#7d3040; stroke-dasharray:5 3; }
+.location-target.is-severed.selected .body-location { stroke:var(--ui-olive); }
+.location-target.is-severed .body-value-backing { opacity:.75; }
+
+.location-list { gap:0; margin:2px 0 0; }
+.location-row { grid-template-columns:minmax(0,1fr) auto auto auto; gap:6px; min-height:26px; padding:3px 4px; border-radius:4px; border-bottom:1px solid var(--ui-border); }
+.location-row:last-child { border-bottom:0; }
+.location-row.selected { background:var(--ui-olive-soft); }
+.location-row.selected .loc-name { color:var(--ui-ink); }
+.loc-name { font-size:11px; }
+.loc-roll { font-size:9px; color:var(--ui-muted); font-variant-numeric:tabular-nums; }
+.loc-hp { min-width:34px; font-size:10px; font-weight:500; color:var(--ui-ink); text-align:right; font-variant-numeric:tabular-nums; }
+.loc-ap { min-width:26px; font-size:9px; color:var(--ui-secondary); text-align:right; }
+.location-row .loc-injury { grid-column:1/-1; font-size:10px; color:var(--ui-danger); }
+
+.location-editor { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px; margin:8px 0 0; padding:6px 8px; border-radius:6px; }
+.loc-title { font-size:12px; font-weight:600; color:var(--ui-ink); }
+.hp-edit-controls { display:flex; flex-direction:row; min-width:0; align-items:center; gap:4px; }
+.hp-edit-controls input { width:52px; min-height:28px; padding:3px 6px; font-size:12px; border:1px solid var(--ui-border); border-radius:5px; background:var(--ui-surface); color:var(--ui-ink); }
+.hp-edit-controls button { min-height:28px; padding:3px 8px; font-size:11px; border:1px solid var(--ui-border); border-radius:5px; background:var(--ui-surface); color:var(--ui-ink); }
+.hp-edit-controls button:hover { background:var(--ui-raised); }
+.hp-edit-controls button:disabled { opacity:.45; }
+.hp-amount-help { flex-basis:100%; font-size:10px; color:var(--ui-danger); }
+
+.injury-chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
+.injury-chip { min-height:26px; padding:3px 8px; font-size:11px; border:1px solid var(--ui-border); border-radius:5px; background:var(--ui-surface); color:var(--ui-secondary); }
+.injury-chip:hover { border-color:var(--ui-danger); color:var(--ui-danger); }
+.injury-chip.on { background:var(--ui-danger); border-color:var(--ui-danger); color:var(--ui-on-dark); }
+.injury-none { align-self:center; font-size:11px; color:var(--ui-muted); }
+
+.fatigue { padding:8px; border-radius:7px; }
+.fatigue-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.fatigue-row select { max-width:62%; min-height:30px; margin:0; padding:4px 6px; font-size:12px; }
+.fatigue-current { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:2px 8px; padding:6px 0 0; font-size:11px; }
+.fatigue-title-button { color:var(--ui-warning); }
+
+@media(max-width:1240px) {
+  .character-columns { grid-template-columns:1fr; }
+  .body-zone { border-right:0; border-bottom:1px solid var(--ui-border); }
+  .plate-row { grid-template-columns:minmax(200px,240px) minmax(0,1fr); }
+}
+@media(max-width:680px) {
+  .body-svg { display:none; }
+  .plate-row { grid-template-columns:1fr; }
+  .numbers-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .topline { grid-template-columns:1fr; }
+  .summary-zone, .effects-zone { padding:12px; }
+  .location-row { grid-template-columns:minmax(0,1fr) auto auto; grid-template-areas:"name hp ap" "roll roll roll"; row-gap:0; }
+  .location-row .loc-name { grid-area:name; }
+  .location-row .loc-hp { grid-area:hp; }
+  .location-row .loc-ap { grid-area:ap; }
+  .location-row .loc-roll { grid-area:roll; color:var(--ui-muted); font-size:10px; }
+  .fatigue-row select { max-width:55%; }
+}

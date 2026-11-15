@@ -52,7 +52,12 @@ describe('Companion permanent advancement', () => {
     expect(component.injuryMark('head')).toBeFalse();
     component.character.companion = {injuries: {chest: ['Раздроблена','Пронзена']}};
     expect(component.injuryText('chest')).toBe('Раздроблена, Пронзена');
-    expect(component.injuryGlyphsFor('chest').map(glyph=>glyph.type)).toEqual(['Раздроблена','Пронзена']);
+    expect(component.hasWoundType('chest','Раздроблена')).toBeTrue();
+    expect(component.hasWoundType('chest','Отсечена')).toBeFalse();
+    const arm=component.locations.find(location=>location.key==='leftArm')!;
+    expect(component.partPath(arm)).toBe(arm.path);
+    component.character.companion = {injuries: {leftArm: ['Отсечена']}};
+    expect(component.partPath(arm)).toBe(arm.stubPath!);
     // Lost HP alone is not an injury (ТЗ §5.4).
     component.character.companion = {};
     component.character.currentHitPoints = {chest: -5};

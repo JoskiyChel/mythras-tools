@@ -66,75 +66,36 @@
           <span class="year-label">MYTHRAS CHARACTER SHEET</span>
         </div>
         <div class="character-columns">
-          <!-- Characteristic/attribute column -->
-          <div class="summary-zone">
-            <div class="zone-title">Характеристики</div>
-            <div class="characteristics">
-              <div class="characteristic" *ngFor="let key of characteristics">
-                <span>{{key | uppercase}}</span>
-                <strong [class.highlight-result]="upgrade && draftStats[key]">{{charValue(key)}}</strong>
-                <div class="upgrade-edit" *ngIf="upgrade">
-                  <button type="button" (click)="alterStat(key,-1)">−</button>
-                  <em [class.negative]="(draftStats[key] || 0) < 0">{{draftStats[key] || '·'}}</em>
-                  <button type="button" (click)="alterStat(key,1)">+</button>
-                </div>
-              </div>
-            </div>
-            <div class="identity-mini">
-              <label>Frame <input [(ngModel)]="character.frame" aria-label="Frame"></label>
-              <label>Рост, см <input type="number" [(ngModel)]="character.height" aria-label="Рост в сантиметрах"></label>
-              <label>Вес, кг <input type="number" [(ngModel)]="character.weight" aria-label="Вес в килограммах"></label>
-            </div>
-            <div class="zone-title with-margin">Атрибуты</div>
-            <div class="attribute-grid">
-              <div class="attribute metric"><small>Damage Modifier</small><strong>{{damage}}</strong></div>
-              <div class="attribute metric"><small>Experience Modifier</small><strong>{{attr('expMod') >= 0 ? '+' : ''}}{{attr('expMod')}}</strong></div>
-              <div class="attribute metric"><small>Initiative</small><strong>{{canAct?attr('init'):'—'}}</strong><small class="footnote">Броня −{{armourPenalty}} · Усталость: {{fatigueInitiativePenalty===null?'нет действий':fatigueInitiativePenalty}}</small></div>
-              <button class="attribute metric interactive" type="button" (click)="movementDialog=true">
-                <small>Movement <span class="material-icons ui-icon" aria-hidden="true">open_in_new</span></small><strong>{{currentMovement}} м</strong><small class="footnote">Бег · плавание · прыжки</small>
-              </button>
-            </div>
-            <div class="resource-grid">
-              <div class="resource"><small>Action Points</small><strong>{{currentResource('ap',attr('ap'))}}<span>/{{attr('ap')}}</span></strong>
-                <div class="resource-controls"><button type="button" (click)="adjustResource('ap',-1,attr('ap'))">−</button><button type="button" (click)="adjustResource('ap',1,attr('ap'))">＋</button></div></div>
-              <div class="resource"><small>Magic Points</small><strong>{{currentResource('magicPoints',mpMax)}}<span>/{{mpMax}}</span></strong>
-                <div class="resource-controls"><button type="button" (click)="adjustResource('magicPoints',-1,mpMax)">−</button><button type="button" (click)="adjustResource('magicPoints',1,mpMax)">＋</button></div></div>
-              <div class="resource"><small>Luck Points</small><strong>{{currentResource('luck',attr('luck'))}}<span>/{{attr('luck')}}</span></strong>
-                <div class="resource-controls"><button type="button" (click)="adjustResource('luck',-1,attr('luck'))">−</button><button type="button" (click)="adjustResource('luck',1,attr('luck'))">＋</button></div></div>
-            </div>
-          </div>
-
-          <!-- Body illustration and current HP -->
+          <!-- Anatomical plate: wounds change the part itself -->
           <div class="body-zone">
             <div class="zone-title">Локации попаданий
               <span class="body-legend"><svg class="sheet-icon" aria-hidden="true"><use href="assets/ui/sheet-icons.svg#heart"/></svg> HP <svg class="sheet-icon" aria-hidden="true"><use href="assets/ui/sheet-icons.svg#shield"/></svg> AP</span>
             </div>
-            <svg class="body-svg" viewBox="0 0 520 550" aria-label="Семь локаций тела — выберите часть фигуры">
-              <g *ngFor="let loc of locations;trackBy:trackLocation" class="location-target" [class.selected]="selectedLocation===loc.key"
+            <div class="plate-row">
+            <svg class="body-svg" viewBox="0 0 300 470" aria-label="Семь локаций тела — выберите часть фигуры">
+              <defs>
+                <pattern id="companionCrush" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                  <line x1="0" y1="0" x2="0" y2="6" stroke="#963e36" stroke-width="1" stroke-opacity=".5"/>
+                </pattern>
+              </defs>
+              <rect class="body-plate" x="2" y="2" width="296" height="466" rx="14"/>
+              <path class="body-joint" d="M140 60H160V98H140Z"/>
+              <g *ngFor="let loc of locations;trackBy:trackLocation" class="location-target"
+                [class.selected]="selectedLocation===loc.key"
+                [class.is-severed]="hasWoundType(loc.key,'Отсечена')"
+                [class.is-crushed]="hasWoundType(loc.key,'Раздроблена')"
+                [class.is-impaled]="hasWoundType(loc.key,'Пронзена')"
                 (click)="selectLocation(loc.key)" (keydown)="onSvgKey($event,loc.key)" tabindex="0" role="button"
-                [attr.aria-label]="loc.label + ': здоровье ' + hp(loc.key) + ' из ' + maxHp(loc.key) + ', броня ' + ap(loc.key) + ', d20 ' + loc.roll"
+                [attr.aria-label]="loc.label + ': здоровье ' + hp(loc.key) + ' из ' + maxHp(loc.key) + ', броня ' + ap(loc.key) + ', d20 ' + loc.roll + (injuryMark(loc.key) ? ', травмы: ' + injuryText(loc.key) : '')"
                 [attr.aria-pressed]="selectedLocation===loc.key">
-                <path class="body-location" [attr.d]="loc.path" [attr.fill]="hpColour(loc.key)"/>
-                <g *ngIf="injuryMark(loc.key)" class="injury-glyphs" [attr.transform]="'translate('+(loc.centerX-25)+','+(loc.centerY+32)+')'">
-                  <g *ngFor="let glyph of injuryGlyphsFor(loc.key);let i=index" [attr.transform]="'translate('+(i*14)+',0)'">
-                    <path [attr.d]="glyph.path"/><title>{{glyph.label}}</title>
-                  </g>
+                <path class="body-location" [attr.d]="partPath(loc)" [attr.fill]="hpColour(loc.key)"/>
+                <path *ngIf="hasWoundType(loc.key,'Раздроблена')" class="wound-crush" [attr.d]="partPath(loc)" fill="url(#companionCrush)"/>
+                <path *ngIf="hasWoundType(loc.key,'Отсечена') && loc.seam" class="wound-seam" [attr.d]="loc.seam"/>
+                <g *ngIf="hasWoundType(loc.key,'Пронзена')" class="wound-impale" aria-hidden="true">
+                  <line [attr.x1]="loc.impale[0]" [attr.y1]="loc.impale[1]" [attr.x2]="loc.impale[2]" [attr.y2]="loc.impale[3]"/>
+                  <circle [attr.cx]="loc.impale[0]" [attr.cy]="loc.impale[1]" r="2.5"/>
                 </g>
-                <rect class="body-value-backing" [attr.x]="loc.centerX-29" [attr.y]="loc.centerY-15" width="58" height="39" rx="5"/>
-                <svg [attr.x]="loc.centerX-25" [attr.y]="loc.centerY-11" width="14" height="14" class="body-stat-icon" aria-hidden="true"><use href="assets/ui/sheet-icons.svg#heart"/></svg>
-                <text class="body-hp" [attr.x]="loc.centerX+7" [attr.y]="loc.centerY+1">{{hp(loc.key)}}/{{maxHp(loc.key)}}</text>
-                <svg [attr.x]="loc.centerX-25" [attr.y]="loc.centerY+6" width="14" height="14" class="body-stat-icon" aria-hidden="true"><use href="assets/ui/sheet-icons.svg#shield"/></svg>
-                <text class="body-ap" [attr.x]="loc.centerX+7" [attr.y]="loc.centerY+18">{{ap(loc.key)}}</text>
-                <text class="body-label" [attr.x]="loc.labelX" [attr.y]="loc.labelY">{{loc.label}}</text>
-                <svg [attr.x]="loc.labelX" [attr.y]="loc.labelY+8" width="22" height="22" class="body-stat-icon" aria-hidden="true"><use href="assets/ui/sheet-icons.svg#d20"/></svg>
-                <text class="body-roll" [attr.x]="loc.labelX+29" [attr.y]="loc.labelY+25">{{loc.roll}}</text>
-              </g>
-              <!-- Engraved details belong to the relief; they never intercept a hit-location click. -->
-              <g class="body-engraving" aria-hidden="true">
-                <path d="M236 38 Q246 24 260 29 Q274 22 286 38 M238 31 Q247 15 258 22 M262 21 Q275 16 283 30 M245 48 l8 -1 M267 47 l8 1 M260 48 l-3 13 6 0 M252 69 q8 5 16 0"/>
-                <path d="M239 37 l-6 -8 M247 29 l-3 -9 M258 26 l0 -10 M270 26 l3 -8 M279 31 l6 -6"/>
-                <path d="M227 114 Q245 113 255 127 M293 114 Q275 113 265 127 M224 142 Q239 153 252 145 M296 142 Q281 153 268 145 M260 118 v18 M234 188 q26 10 52 0 M236 216 q24 10 48 0 M235 267 l25 17 25 -17 M260 267 v12"/>
-                <path d="M199 132 q-8 20 -8 37 M188 236 l-12 37 M321 132 q8 20 8 37 M332 236 l12 37 M228 309 q5 30 1 49 M292 309 q-5 30 -1 49 M224 423 q-4 31 1 55 M296 423 q4 31 -1 55 M218 513 l15 4 M302 513 l-15 4"/>
+                <text class="body-hp" [attr.x]="loc.anchorX" [attr.y]="hpLabelY(loc)">{{hp(loc.key)}}/{{maxHp(loc.key)}}</text>
               </g>
             </svg>
             <!-- Locations are selectable from the list as well; this stays usable
@@ -145,53 +106,82 @@
                 [attr.aria-selected]="selectedLocation===loc.key" (click)="selectLocation(loc.key)">
                 <span class="loc-name">{{loc.label}}</span>
                 <span class="loc-roll">d20 {{loc.roll}}</span>
-                <span class="loc-hp">{{hp(loc.key)}}/{{maxHp(loc.key)}} HP</span>
+                <span class="loc-hp">{{hp(loc.key)}}/{{maxHp(loc.key)}}</span>
                 <span class="loc-ap">AP {{ap(loc.key)}}</span>
                 <span class="loc-injury" *ngIf="injuryMark(loc.key)">{{injuryText(loc.key)}}</span>
               </button>
             </div>
-            <div class="healing-rate"><span>Скорость лечения</span><strong>{{attr('healing')}}</strong></div>
+            </div>
             <div class="location-editor">
-              <div><strong>{{selectedLabel}}</strong>
-                <small>{{currentHp}} / {{maxHp(selectedLocation)}} HP · AP {{ap(selectedLocation)}}</small></div>
+              <span class="loc-title">{{selectedLabel}}</span>
               <div class="hp-edit-controls">
-                <div class="control-pair">
-                  <button type="button" (click)="adjustSelectedHp(-1)" [disabled]="!hpAmountValid || upgrade" [attr.aria-label]="'Нанести ' + hpAmount + ' урона: ' + selectedLocation">− HP</button>
-                  <button type="button" (click)="adjustSelectedHp(1)" [disabled]="!hpAmountValid || upgrade" [attr.aria-label]="'Вылечить ' + hpAmount + ' HP: ' + selectedLocation">＋ HP</button>
+                <button type="button" (click)="adjustSelectedHp(-1)" [disabled]="!hpAmountValid || upgrade" [attr.aria-label]="'Нанести ' + hpAmount + ' урона: ' + selectedLocation">− HP</button>
+                <input id="companion-hp-amount" type="number" min="1" max="999" step="1" [(ngModel)]="hpAmount" [attr.aria-invalid]="!hpAmountValid" aria-label="HP за нажатие" aria-describedby="companion-hp-amount-help"/>
+                <button type="button" (click)="adjustSelectedHp(1)" [disabled]="!hpAmountValid || upgrade" [attr.aria-label]="'Вылечить ' + hpAmount + ' HP: ' + selectedLocation">＋ HP</button>
+              </div>
+              <small class="hp-amount-help" id="companion-hp-amount-help" *ngIf="!hpAmountValid">Целое число от 1 до 999.</small>
+            </div>
+            <div class="injury-chips" role="group" [attr.aria-label]="'Травмы: ' + selectedLabel">
+              <button type="button" class="injury-chip" *ngFor="let type of woundTypes"
+                [class.on]="hasInjury(type)" [attr.aria-pressed]="hasInjury(type)" (click)="toggleInjury(type)">{{type}}</button>
+              <span class="injury-none" *ngIf="!injuryMark(selectedLocation)">Повреждений нет</span>
+            </div>
+          </div>
+
+          <!-- Numbers and effects: one column, no dead space under the plate -->
+          <div class="info-zone">
+            <div class="summary-zone">
+              <div class="topline">
+                <div class="characteristics">
+                  <div class="characteristic" *ngFor="let key of characteristics">
+                    <span>{{key | uppercase}}</span>
+                    <strong [class.highlight-result]="upgrade && draftStats[key]">{{charValue(key)}}</strong>
+                    <div class="upgrade-edit" *ngIf="upgrade">
+                      <button type="button" (click)="alterStat(key,-1)">−</button>
+                      <em [class.negative]="(draftStats[key] || 0) < 0">{{draftStats[key] || '·'}}</em>
+                      <button type="button" (click)="alterStat(key,1)">+</button>
+                    </div>
+                  </div>
                 </div>
-                <label class="hp-amount-label" for="companion-hp-amount">HP за нажатие
-                  <input id="companion-hp-amount" type="number" min="1" max="999" step="1" [(ngModel)]="hpAmount" [attr.aria-invalid]="!hpAmountValid" aria-describedby="companion-hp-amount-help"/>
-                </label>
-                <small class="hp-amount-help" id="companion-hp-amount-help" *ngIf="!hpAmountValid">Укажите целое число от 1 до 999.</small>
+                <div class="identity-mini">
+                  <label>Frame <input [(ngModel)]="character.frame" aria-label="Frame"></label>
+                  <label>Рост, см <input type="number" [(ngModel)]="character.height" aria-label="Рост в сантиметрах"></label>
+                  <label>Вес, кг <input type="number" [(ngModel)]="character.weight" aria-label="Вес в килограммах"></label>
+                </div>
+              </div>
+              <div class="numbers-grid">
+                <div class="attribute metric"><small>Damage Modifier</small><strong>{{damage}}</strong></div>
+                <div class="attribute metric"><small>Experience Modifier</small><strong>{{attr('expMod') >= 0 ? '+' : ''}}{{attr('expMod')}}</strong></div>
+                <div class="attribute metric"><small>Initiative</small><strong>{{canAct?attr('init'):'—'}}</strong><small class="footnote">Броня −{{armourPenalty}} · Усталость: {{fatigueInitiativePenalty===null?'нет действий':fatigueInitiativePenalty}}</small></div>
+                <button class="attribute metric interactive" type="button" (click)="movementDialog=true">
+                  <small>Movement <span class="material-icons ui-icon" aria-hidden="true">open_in_new</span></small><strong>{{currentMovement}} м</strong><small class="footnote">Бег · плавание · прыжки</small>
+                </button>
+                <div class="resource"><small>Action Points</small><strong>{{currentResource('ap',attr('ap'))}}<span>/{{attr('ap')}}</span></strong>
+                  <div class="resource-controls"><button type="button" (click)="adjustResource('ap',-1,attr('ap'))">−</button><button type="button" (click)="adjustResource('ap',1,attr('ap'))">＋</button></div></div>
+                <div class="resource"><small>Magic Points</small><strong>{{currentResource('magicPoints',mpMax)}}<span>/{{mpMax}}</span></strong>
+                  <div class="resource-controls"><button type="button" (click)="adjustResource('magicPoints',-1,mpMax)">−</button><button type="button" (click)="adjustResource('magicPoints',1,mpMax)">＋</button></div></div>
+                <div class="resource"><small>Luck Points</small><strong>{{currentResource('luck',attr('luck'))}}<span>/{{attr('luck')}}</span></strong>
+                  <div class="resource-controls"><button type="button" (click)="adjustResource('luck',-1,attr('luck'))">−</button><button type="button" (click)="adjustResource('luck',1,attr('luck'))">＋</button></div></div>
+                <div class="resource static"><small>Healing Rate</small><strong>{{attr('healing')}}</strong></div>
               </div>
             </div>
-            <fieldset class="injury-control">
-              <legend>Последствия травмы: {{selectedLabel}}</legend>
-              <label class="injury-option" *ngFor="let type of woundTypes">
-                <input type="checkbox" [checked]="hasInjury(type)" (change)="toggleInjury(type)"> {{type}}
-              </label>
-              <small *ngIf="!injuryMark(selectedLocation)">Повреждений нет</small>
-            </fieldset>
-          </div>
 
           <!-- Effects column -->
           <div class="effects-zone">
             <div class="zone-title">Эффекты и состояния</div>
             <div class="fatigue">
-              <div class="flexline"><button class="fatigue-title-button" type="button" (click)="fatigueTableOpen=true" aria-label="Показать таблицу усталости">Усталость <span>ⓘ</span></button><span>{{character.fatigueLevel || 'Fresh'}}</span></div>
-              <select aria-label="Степень усталости" [ngModel]="character.fatigueLevel || 'Fresh'" (ngModelChange)="setFatigue($event)">
-                <option *ngFor="let level of fatigueLevels" [value]="level">{{level}}</option>
-              </select>
-              <div class="fatigue-current" aria-live="polite">
-                <span>Сложность: {{currentFatigueRule.skillGrade}}</span>
-                <span>Движение: {{currentFatigueRule.movement}}</span>
-                <span>Инициатива: {{currentFatigueRule.initiative===null?'Нет действий':currentFatigueRule.initiative}}</span>
-                <span>AP: {{currentFatigueRule.actionPoints===null?'Нет действий':currentFatigueRule.actionPoints}}</span>
+              <div class="fatigue-row">
+                <button class="fatigue-title-button" type="button" (click)="fatigueTableOpen=true" aria-label="Показать таблицу усталости">Усталость ⓘ</button>
+                <select aria-label="Степень усталости" [ngModel]="character.fatigueLevel || 'Fresh'" (ngModelChange)="setFatigue($event)">
+                  <option *ngFor="let level of fatigueLevels" [value]="level">{{level}}</option>
+                </select>
               </div>
-              <button class="fatigue-help-toggle" type="button" [attr.aria-expanded]="fatigueTableOpen" (click)="fatigueTableOpen=!fatigueTableOpen">
-                {{fatigueTableOpen?'Скрыть уровни усталости':'Что означает каждый уровень?'}} <span>{{fatigueTableOpen?'⌃':'⌄'}}</span>
-              </button>
-
+              <div class="fatigue-current" aria-live="polite">
+                <span>Навыки: {{currentFatigueRule.skillGrade}}</span>
+                <span>Движение: {{currentFatigueRule.movement}}</span>
+                <span>Init: {{currentFatigueRule.initiative===null?'—':currentFatigueRule.initiative}}</span>
+                <span>AP: {{currentFatigueRule.actionPoints===null?'—':currentFatigueRule.actionPoints}}</span>
+              </div>
             </div>
             <div class="effect-row" *ngFor="let effect of effects">
               <div><strong>{{effect.name}}</strong><small *ngIf="effect.duration">Длительность: {{effect.duration}}</small>
@@ -202,6 +192,7 @@
             <div class="effect-row old-gift" *ngFor="let gift of gifts">
               <div><strong>{{gift.name}}</strong><small>Сохранённый дар</small><p *ngIf="gift.description" class="effect-description">{{gift.description}}</p></div>
             </div>
+            <p class="empty-state" *ngIf="!effects.length && !gifts.length && !addingEffect">Активных эффектов нет.</p>
             <button class="inline-add" type="button" *ngIf="!addingEffect" (click)="addingEffect=true">＋ Добавить эффект, состояние или дар</button>
             <div class="effect-create" *ngIf="addingEffect">
               <label class="field-label">Название<input placeholder="Название эффекта" [(ngModel)]="effectName" aria-label="Название эффекта"></label>
@@ -223,6 +214,7 @@
               <button class="inline-add" type="button" (click)="addModifier()">＋ Модификатор</button>
               <div class="flexline"><button class="quiet compact" type="button" (click)="cancelEffect()">Отмена</button><button class="primary compact" type="button" (click)="applyEffect()" [disabled]="!effectName.trim()">Сохранить эффект</button></div>
             </div>
+          </div>
           </div>
         </div>
       </section>

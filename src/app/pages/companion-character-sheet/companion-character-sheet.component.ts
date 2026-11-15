@@ -30,22 +30,74 @@ import {
 interface SheetInfo { title:string; source?:string; sections:{label:string;paragraphs:string[]}[]; }
 
 type SheetTab = 'weapons'|'magic'|'armour'|'equipment'|'notes';
-interface LocationGeometry { path:string; centerX:number; centerY:number; labelX:number; labelY:number; }
+/** Geometry of one part of the anatomical plate. `path` is the whole part,
+ * `stubPath` what remains after a dismemberment, `seam` is the cut line and
+ * `impale` a through-line with its entry point. */
+interface LocationGeometry {
+  path:string;
+  stubPath?:string;
+  seam?:string;
+  impale:[number,number,number,number];
+  anchorX:number;
+  anchorY:number;
+  /** Label position after a dismemberment, so it stays on the remaining stub. */
+  stubAnchorY?:number;
+}
 interface LocationDisplay extends LocationGeometry {
   key: HitLocation; label:string; roll:string;
 }
 interface Tradition { title:string; subtitle:string; spells:{name:string;description?:string;tags?:string}[]; skills:string[]; }
 
 /** Drawing only: labels, order and d20 ranges come from services/hit-locations.ts.
- * Anatomical right is on the viewer's left. */
+ * Front-facing mannequin on a stone plate; anatomical right is on the viewer's left.
+ * Coordinates live in a 300 × 470 viewBox. */
 const LOCATION_GEOMETRY: Record<HitLocation, LocationGeometry> = {
-  head: {path:'M233 39 C234 18 247 12 260 12 C277 12 289 23 288 43 L285 62 Q282 76 269 82 L269 96 L251 96 L251 82 Q237 76 235 62Z', centerX:314, centerY:82, labelX:373, labelY:42},
-  chest: {path:'M248 96 Q234 100 218 107 Q212 130 222 159 L230 200 Q260 208 290 200 L298 159 Q308 130 302 107 Q285 100 272 96 Q260 103 248 96Z', centerX:260, centerY:160, labelX:373, labelY:135},
-  abdoment: {path:'M230 204 Q260 212 290 204 L296 266 Q282 278 260 291 Q238 278 224 266Z', centerX:260, centerY:246, labelX:373, labelY:280},
-  rightArm: {path:'M214 108 Q201 105 192 119 Q182 136 181 159 L167 213 Q155 239 150 274 L144 297 Q141 309 148 319 Q156 325 163 316 L171 295 Q180 274 183 255 L197 225 Q206 204 209 184 L221 147 Q216 128 214 108Z', centerX:178, centerY:211, labelX:10, labelY:177},
-  leftArm: {path:'M306 108 Q319 105 328 119 Q338 136 339 159 L353 213 Q365 239 370 274 L376 297 Q379 309 372 319 Q364 325 357 316 L349 295 Q340 274 337 255 L323 225 Q314 204 311 184 L299 147 Q304 128 306 108Z', centerX:342, centerY:211, labelX:373, labelY:204},
-  rightLeg: {path:'M224 271 L257 295 Q252 326 251 353 L247 389 Q249 417 240 454 L237 507 Q241 519 236 530 L206 535 Q198 533 203 524 L216 505 L214 455 Q211 424 219 392 L216 347 Q210 308 224 271Z', centerX:229, centerY:391, labelX:10, labelY:398},
-  leftLeg: {path:'M296 271 L263 295 Q268 326 269 353 L273 389 Q271 417 280 454 L283 507 Q279 519 284 530 L314 535 Q322 533 317 524 L304 505 L306 455 Q309 424 301 392 L304 347 Q310 308 296 271Z', centerX:291, centerY:391, labelX:373, labelY:398},
+  head: {
+    path:'M128 44A22 27 0 1 0 172 44A22 27 0 1 0 128 44Z',
+    seam:'M132 74H168',
+    impale:[112,24,188,58],
+    anchorX:150, anchorY:44,
+  },
+  chest: {
+    path:'M96 90Q150 74 204 90L196 196Q150 206 104 196Z',
+    seam:'M104 188Q150 198 196 188',
+    impale:[92,120,208,156],
+    anchorX:150, anchorY:146,
+  },
+  abdoment: {
+    path:'M104 198Q150 208 196 198L188 290Q150 300 112 290Z',
+    seam:'M112 282Q150 294 188 282',
+    impale:[98,250,202,232],
+    anchorX:150, anchorY:248,
+  },
+  rightArm: {
+    path:'M96 94L76 104L70 180L66 250Q64 274 78 274Q90 274 88 252L90 182L96 122Z',
+    stubPath:'M96 94L76 104L73 160L90 160L96 122Z',
+    seam:'M73 160H90',
+    impale:[58,202,96,166],
+    anchorX:78, anchorY:214, stubAnchorY:140,
+  },
+  leftArm: {
+    path:'M204 94L224 104L230 180L234 250Q236 274 222 274Q210 274 212 252L210 182L204 122Z',
+    stubPath:'M204 94L224 104L227 160L210 160L204 122Z',
+    seam:'M210 160H227',
+    impale:[204,166,242,202],
+    anchorX:222, anchorY:214, stubAnchorY:140,
+  },
+  rightLeg: {
+    path:'M128 292L120 378L124 436Q108 440 108 452L108 462L146 462L144 436L142 378L148 292Z',
+    stubPath:'M128 292L124 372L144 372L148 292Z',
+    seam:'M124 372H144',
+    impale:[100,344,150,362],
+    anchorX:133, anchorY:404, stubAnchorY:340,
+  },
+  leftLeg: {
+    path:'M172 292L180 378L176 436Q192 440 192 452L192 462L154 462L156 436L158 378L152 292Z',
+    stubPath:'M172 292L176 372L156 372L152 292Z',
+    seam:'M156 372H176',
+    impale:[150,362,200,344],
+    anchorX:167, anchorY:404, stubAnchorY:340,
+  },
 };
 const ATT_KEYS: {key:AttributeKey; name:string}[] = [
   {key:'ap',name:'Action Points'}, {key:'healing',name:'Healing Rate'},
@@ -321,21 +373,18 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     const t=Math.max(0,Math.min(1,n/max));
     return 'rgb('+[0,1,2].map(i=>Math.round([211,172,104][i]*(1-t)+[235,223,197][i]*t)).join(',')+')';
   }
-  /** Distinct glyphs per wound type: a severed, crushed and impaled location look
-   * different and are never derived from lost HP (ТЗ §5.4). */
-  readonly injuryGlyphs:{type:string;path:string;label:string}[]=[
-    {type:'Отсечена',path:'M0 0 L8 10 M4 0 L12 10',label:'отсечение'},
-    {type:'Раздроблена',path:'M5 0 L6.5 3.5 L10 5 L6.5 6.5 L5 10 L3.5 6.5 L0 5 L3.5 3.5 Z',label:'дробление'},
-    {type:'Пронзена',path:'M0 5 L11 5 M7.5 1.5 L11 5 L7.5 8.5',label:'пронзение'},
-  ];
-  injuryMark(key:HitLocation):boolean {
-    return locationInjuries(this.character,key).length>0;
+  /** A wound changes the part itself: a severed part is drawn as the remaining
+   * stub, a crushed one gets the hatch pattern, an impaled one a through-line. */
+  partPath(loc:LocationDisplay):string {
+    return this.hasWoundType(loc.key,'Отсечена')&&loc.stubPath?loc.stubPath:loc.path;
   }
-  injuryGlyphsFor(key:HitLocation):{type:string;path:string;label:string}[] {
-    return locationInjuries(this.character,key)
-      .map(type=>this.injuryGlyphs.find(glyph=>glyph.type===type))
-      .filter((glyph):glyph is {type:string;path:string;label:string}=>Boolean(glyph));
+  hasWoundType(key:HitLocation,type:string):boolean {
+    return locationInjuries(this.character,key).includes(type);
   }
+  hpLabelY(loc:LocationDisplay):number {
+    return this.hasWoundType(loc.key,'Отсечена')&&loc.stubAnchorY?loc.stubAnchorY:loc.anchorY;
+  }
+  injuryMark(key:HitLocation):boolean {return locationInjuries(this.character,key).length>0;}
   injuryText(key:HitLocation):string {return locationInjuries(this.character,key).join(', ');}
   hasInjury(type:string):boolean {return locationInjuries(this.character,this.selectedLocation).includes(type);}
   toggleInjury(type:string):void {
