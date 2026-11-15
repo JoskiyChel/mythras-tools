@@ -17,7 +17,7 @@
         <h2>Навыки</h2>
         <div class="inline-actions">
           <button class="skills-close" type="button" (click)="skillsOpen=false" aria-label="Закрыть панель навыков">×</button>
-          <ng-container *ngIf="!upgrade"><button class="primary compact" type="button" (click)="beginUpgrade()">＋ Прокачка</button></ng-container>
+          <ng-container *ngIf="!upgrade"><button class="primary compact" type="button" (click)="beginUpgrade()">＋ Становление</button></ng-container>
           <ng-container *ngIf="upgrade">
             <button class="quiet compact" type="button" (click)="discardUpgrade()">Отмена</button>
             <button class="primary compact" type="button" [disabled]="!hasUpgrade" (click)="applyUpgrade()">Применить</button>
@@ -25,15 +25,27 @@
         </div>
       </div>
       <div class="panel-content">
-        <p class="minor-note" *ngIf="upgrade">Зелёный/красный — прямое изменение, синий ↗ — пересчёт от характеристик.</p>
+        <p class="minor-note" *ngIf="upgrade">Становление: прошлое → прибавка → итог. Зелёный/красный — прямое изменение, ↗ — пересчёт.</p>
         <input class="search-field" type="search" [(ngModel)]="query" aria-label="Поиск навыка" placeholder="Поиск навыка…">
+        <div class="add-skill" *ngIf="upgrade">
+          <label class="field-label" for="companion-new-skill">Добавить навык</label>
+          <div class="add-skill-row">
+            <select id="companion-new-skill" [(ngModel)]="newSkillName" aria-label="Новый профессиональный навык">
+              <option value="">Выберите навык…</option>
+              <option *ngFor="let skill of addableSkills" [value]="skill.name">{{skill.name}}</option>
+            </select>
+            <button type="button" class="quiet compact" [disabled]="!newSkillName" (click)="addDraftSkill()">Добавить</button>
+          </div>
+          <small class="add-skill-note" *ngIf="!addableSkills.length">Все навыки из справочника уже есть у персонажа.</small>
+        </div>
         <section class="skill-group" *ngFor="let group of groups;trackBy:trackGroup">
           <h3 *ngIf="group.skills.length">{{group.name}}</h3>
           <div class="skill-row" *ngFor="let skill of group.skills; trackBy:trackSkill">
             <button class="skill-name" type="button" (click)="openSkill(skill)" [title]="skill.name">{{skill.name}}</button>
             <div class="skill-value">
               <ng-container *ngIf="upgrade">
-                <span class="value-old">{{oldSkillValue(skill)}}</span>
+                <span class="value-old" *ngIf="!isDraftAdded(skill)">{{oldSkillValue(skill)}}</span>
+                <span class="value-new" *ngIf="isDraftAdded(skill)">новый</span>
                 <span class="change-value" [class.negative]="(draftSkills.get(skill) || 0) < 0" *ngIf="draftSkills.get(skill)">
                   {{(draftSkills.get(skill) || 0) > 0 ? '+' : ''}}{{draftSkills.get(skill)}}
                 </span>
@@ -95,7 +107,6 @@
                   <line [attr.x1]="loc.impale[0]" [attr.y1]="loc.impale[1]" [attr.x2]="loc.impale[2]" [attr.y2]="loc.impale[3]"/>
                   <circle [attr.cx]="loc.impale[0]" [attr.cy]="loc.impale[1]" r="2.5"/>
                 </g>
-                <text class="body-hp" [attr.x]="loc.anchorX" [attr.y]="hpLabelY(loc)">{{hp(loc.key)}}/{{maxHp(loc.key)}}</text>
               </g>
             </svg>
             <!-- Locations are selectable from the list as well; this stays usable
@@ -120,6 +131,11 @@
                 <button type="button" (click)="adjustSelectedHp(1)" [disabled]="!hpAmountValid || upgrade" [attr.aria-label]="'Вылечить ' + hpAmount + ' HP: ' + selectedLocation">＋ HP</button>
               </div>
               <small class="hp-amount-help" id="companion-hp-amount-help" *ngIf="!hpAmountValid">Целое число от 1 до 999.</small>
+            </div>
+            <div class="quick-damage" *ngIf="!upgrade" role="group" aria-label="Быстрый урон по выбранной локации">
+              <span>Быстрый урон</span>
+              <button *ngFor="let amount of quickDamageAmounts" type="button" (click)="damageBy(amount)"
+                [attr.aria-label]="'Нанести ' + amount + ' урона: ' + selectedLabel">−{{amount}}</button>
             </div>
             <div class="injury-chips" role="group" [attr.aria-label]="'Травмы: ' + selectedLabel">
               <button type="button" class="injury-chip" *ngFor="let type of woundTypes"

@@ -136,6 +136,32 @@ describe('Companion permanent advancement', () => {
     expect(saved.devotionPool).toBe(4);expect(saved.devotionPoolCurrent).toBe(0);
   });
 
+  it('learns a professional skill in the sheet preview and writes it only on apply', () => {
+    component.beginUpgrade();
+    const candidate = component.addableSkills[0];
+    expect(candidate).withContext('a professional skill from the catalogue').toBeTruthy();
+    component.newSkillName = candidate.name;
+    component.addDraftSkill();
+    expect(component.isDraftAdded(candidate)).toBeTrue();
+    expect(component.skillValue(candidate)).toBeGreaterThan(0);
+    expect(component.groups[2].skills).toContain(candidate);
+    expect(component.hasUpgrade).toBeTrue();
+    component.applyUpgrade();
+    expect(candidate.force).toBeTrue();
+    expect(component.upgrade).toBeFalse();
+  });
+
+  it('deals quick damage to the selected location and blocks it during a draft', () => {
+    component.character.currentHitPoints = {chest: 7};
+    component.selectLocation('chest');
+    const before = component.hp('chest');
+    component.damageBy(3);
+    expect(component.hp('chest')).toBe(before - 3);
+    component.beginUpgrade();
+    component.damageBy(3);
+    expect(component.hp('chest')).toBe(before - 3);
+  });
+
   it('carries the current Character into a specific constructor step', () => {
     const navigate=spyOn(TestBed.inject(Router),'navigate').and.resolveTo(true);
     const save=spyOn(component.storage,'setJson').and.stub();

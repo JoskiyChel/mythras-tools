@@ -12,14 +12,16 @@ import { BuilderSection } from '../../services/builder-navigation';
 import { Spell } from '../../model/spell';
 import { AppStorageService, DebouncedSaveHandle } from '../../services/app-storage.service';
 import { downloadJson } from '../../services/character-format';
-import { getAllCombatStyles } from '../../services/character-service.service';
+import { getAllCombatStyles, getSkillBase } from '../../services/character-service.service';
 import { HIT_LOCATION_RULES, HitLocation, hitLocationRule } from '../../services/hit-locations';
 import {
   CompanionCharacter, CharacteristicKey, AttributeKey,
   CHARACTERISTICS, FATIGUE, FATIGUE_RULES, SheetEffect, SheetModifier, MagicStatKey,
   companionState, currentCharacteristic, skillTotal, attributeTotal, damageModifier,
+  calculationCharacter, skillModifierTotal,
   magicPointMaximum, maxLocationHp, displayedLocationHp, initializePristineHitPoints, movementSummary,
   skillGroups, severity, fatigueRule, canAct, changeLocationHp, findTraditionSkill, shapingPointMaximum,
+  visibleProfessionalSkills,
   DIFFICULTY_STEPS, DifficultyStep, CheckThresholds, checkThresholds, augmentingBonus,
   WOUND_TYPES, locationInjuries, setLocationInjuries, magicModifier,
   theismPoolLimit, theismIntensity, animismMaxSpiritPow, animismSpiritLimit,
@@ -164,6 +166,10 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   upgrade=false;
   draftStats:Partial<Record<CharacteristicKey,number>>={};
   readonly draftSkills=new Map<Skill,number>();
+  /** Professional skills learned inside the sheet before the draft is applied. */
+  readonly draftAddedSkills: Skill[]=[];
+  newSkillName='';
+  readonly quickDamageAmounts=[1,2,3,5];
   addingEffect=false;
   effectName=''; effectDuration=''; effectDescription='';
   newModifiers:SheetModifier[]=[];
@@ -214,14 +220,32 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   }
   exportJson():void {this.flush();downloadJson(this.character,(this.character.name||'character')+'.json');}
 
-  get groups(){return skillGroups(this.character).map(g=>({...g,skills:g.skills.filter(s=>s.name.toLowerCase().includes(this.query.toLowerCase()))}));}
+  get groups(){
+    const groups=skillGroups(this.character).map(g=>({...g,skills:[...g.skills]}));
+    if(this.upgrade&&this.draftAddedSkills.length){
+      const professional=groups[2]||groups[groups.length-1];
+      professional.skills=[...professional.skills,...this.draftAddedSkills]
+        .filter((skill,index,all)=>all.indexOf(skill)===index);
+    }
+    const query=this.query.toLowerCase();
+    return groups.map(g=>({...g,skills:g.skills.filter(s=>s.name.toLowerCase().includes(query))}));
+  }
   get styles(){return getAllCombatStyles(this.character);}
   get visiblePassions(){return (this.character.passions||[]).filter(p=>Boolean(p?.passion?.trim()));}
   charValue(key:CharacteristicKey):number {return currentCharacteristic(this.character,key,this.upgrade?this.draftStats:{});}
   charBase(key:CharacteristicKey):number {return currentCharacteristic(this.character,key);}
-  skillValue(skill:Skill):number {return skillTotal(this.character,skill,this.upgrade?this.draftStats:{},this.upgrade?(this.draftSkills.get(skill)||0):0);}
+  skillValue(skill:Skill):number {
+    if(this.upgrade&&this.isDraftAdded(skill)){
+      return getSkillBase(calculationCharacter(this.character,this.draftStats),skill)
+        +skillModifierTotal(this.character,skill)+(this.draftSkills.get(skill)||0);
+    }
+    return skillTotal(this.character,skill,this.upgrade?this.draftStats:{},this.upgrade?(this.draftSkills.get(skill)||0):0);
+  }
   oldSkillValue(skill:Skill):number {return skillTotal(this.character,skill);}
-  indirectSkillDelta(skill:Skill):number {return this.skillValue(skill)-this.oldSkillValue(skill)-(this.draftSkills.get(skill)||0);}
+  indirectSkillDelta(skill:Skill):number {
+    if(this.isDraftAdded(skill))return 0;
+    return this.skillValue(skill)-this.oldSkillValue(skill)-(this.draftSkills.get(skill)||0);
+  }
   /** Use the very same Skill instance and difficulty modal as in the Skills column. */
   magicSkill(name:string):Skill|null {return findTraditionSkill(this.character,name);}
   relatedSkill(name:string):number|null {
@@ -381,9 +405,6 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   hasWoundType(key:HitLocation,type:string):boolean {
     return locationInjuries(this.character,key).includes(type);
   }
-  hpLabelY(loc:LocationDisplay):number {
-    return this.hasWoundType(loc.key,'Отсечена')&&loc.stubAnchorY?loc.stubAnchorY:loc.anchorY;
-  }
   injuryMark(key:HitLocation):boolean {return locationInjuries(this.character,key).length>0;}
   injuryText(key:HitLocation):string {return locationInjuries(this.character,key).join(', ');}
   hasInjury(type:string):boolean {return locationInjuries(this.character,this.selectedLocation).includes(type);}
@@ -403,6 +424,12 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   adjustSelectedHp(direction:-1|1):void {
     if(!this.hpAmountValid||this.upgrade)return;
     changeLocationHp(this.character,this.selectedLocation,direction*this.hpAmount);
+  }
+  /** One tap for the damage values that come up most often at the table. */
+  damageBy(amount:number):void {
+    if(this.upgrade)return;
+    if(!Number.isSafeInteger(amount)||amount<1||amount>999)return;
+    changeLocationHp(this.character,this.selectedLocation,-amount);
   }
   ap(loc:HitLocation):number|string {return this.character.equipment[loc]?.ap??0;}
   onSvgKey(event:KeyboardEvent,loc:HitLocation):void {if(event.key==='Enter'||event.key===' '){event.preventDefault();this.selectLocation(loc);}}
@@ -529,9 +556,31 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   get sessionNotes():string {return this.character.sessionNotes||'';}
   set sessionNotes(text:string){this.character.sessionNotes=text;}
 
-  beginUpgrade():void {this.upgrade=true;this.draftStats={};this.draftSkills.clear();}
-  discardUpgrade():void {this.upgrade=false;this.draftStats={};this.draftSkills.clear();}
-  get hasUpgrade(){return Object.values(this.draftStats).some(v=>v!==0)||[...this.draftSkills.values()].some(x=>x!==0);}
+  beginUpgrade():void {this.upgrade=true;this.draftStats={};this.draftSkills.clear();this.draftAddedSkills.length=0;this.newSkillName='';}
+  discardUpgrade():void {this.upgrade=false;this.draftStats={};this.draftSkills.clear();this.draftAddedSkills.length=0;this.newSkillName='';}
+  get hasUpgrade(){return Object.values(this.draftStats).some(v=>v!==0)||[...this.draftSkills.values()].some(x=>x!==0)||this.draftAddedSkills.length>0;}
+  /** Professional skills from the catalogue that the character has not learned yet. */
+  get addableSkills():Skill[] {
+    const visible=new Set(visibleProfessionalSkills(this.character));
+    const seen=new Set<string>();
+    return (this.character.skills.skills||[])
+      .filter(skill=>Boolean(skill?.professional)&&!visible.has(skill)&&!this.draftAddedSkills.includes(skill))
+      .filter(skill=>{
+        const key=skill.name.toLowerCase();
+        if(seen.has(key))return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a,b)=>a.name.localeCompare(b.name));
+  }
+  isDraftAdded(skill:Skill):boolean {return this.draftAddedSkills.includes(skill);}
+  addDraftSkill():void {
+    const skill=this.addableSkills.find(candidate=>candidate.name===this.newSkillName);
+    if(!skill)return;
+    this.draftAddedSkills.push(skill);
+    if(!this.draftSkills.has(skill))this.draftSkills.set(skill,0);
+    this.newSkillName='';
+  }
   alterStat(key:CharacteristicKey,delta:number):void {
     const next=(this.draftStats[key]||0)+delta;
     if(this.charBase(key)+next<1)return;
@@ -550,6 +599,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
       }
     }
     for(const [skill,delta] of this.draftSkills)skill.extraBonus=(Number(skill.extraBonus)||0)+delta;
+    for(const skill of this.draftAddedSkills)skill.force=true;
     this.discardUpgrade();
   }
   difficultyTarget(multiplier:number):number {return this.activeSkill?Math.ceil(this.skillValue(this.activeSkill)*multiplier):0;}

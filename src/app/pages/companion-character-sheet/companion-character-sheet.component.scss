@@ -353,3 +353,23 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
   .location-row .loc-roll { grid-area:roll; color:var(--ui-muted); font-size:10px; }
   .fatigue-row select { max-width:55%; }
 }
+
+/* Manual advancement ("Становление"): learn a professional skill inside the sheet. */
+.add-skill { margin:6px 0 8px; padding:6px; border:1px solid var(--ui-border); border-radius:6px; background:var(--ui-canvas); }
+.add-skill .field-label { display:block; font-size:11px; color:var(--ui-secondary); margin-bottom:4px; }
+.add-skill-row { display:flex; align-items:center; gap:6px; }
+.add-skill-row select { flex:1; min-width:0; padding:4px 6px; font-size:12px; border:1px solid var(--ui-border); border-radius:5px; background:var(--ui-surface); color:var(--ui-ink); }
+.add-skill-note { display:block; margin-top:4px; font-size:11px; color:var(--ui-muted); }
+.value-new { color:var(--ui-accent); font-size:11px; font-weight:600; }
+
+/* Damage values that come up most often at the table. */
+.quick-damage { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-top:6px; }
+.quick-damage > span { font-size:11px; color:var(--ui-muted); margin-right:2px; }
+.quick-damage button { min-height:26px; padding:3px 8px; font-size:11px; border:1px solid var(--ui-border); border-radius:5px; background:var(--ui-surface); color:var(--ui-danger); }
+.quick-damage button:hover { border-color:var(--ui-danger); background:var(--ui-danger-soft); }
+
+/* Keep the skills column in view during play on desktop. */
+@media(min-width:681px) {
+  .skills-panel { position:sticky; top:8px; max-height:calc(100vh - 24px); display:flex; flex-direction:column; }
+  .skills-panel .panel-content { overflow:auto; min-height:0; }
+}
