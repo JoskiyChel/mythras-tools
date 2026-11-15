@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mythras Companion — направления античности</title>
+<style>
+  /* ---------- shared layout ---------- */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font: 13px/1.5 Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg); color: var(--ink);
+    --radius: 8px; --radius-sm: 4px;
+    --display: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  .switcher {
+    position: sticky; top: 0; z-index: 20; display: flex; gap: 6px; align-items: center;
+    padding: 8px 16px; background: var(--chrome); color: var(--chrome-ink);
+    border-bottom: 1px solid var(--chrome-line); font-size: 12px;
+  }
+  .switcher b { font-family: var(--display); font-size: 14px; font-weight: 600; letter-spacing: .04em; margin-right: 10px; }
+  .switcher button {
+    background: transparent; color: inherit; border: 1px solid var(--chrome-line);
+    padding: 4px 10px; border-radius: 3px; font-size: 12px;
+  }
+  .switcher button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .switcher .hint { margin-left: auto; opacity: .72; font-size: 11px; }
+
+  .app { max-width: 1440px; margin: 0 auto; padding: 0 16px 40px; }
+  .topbar {
+    display: flex; align-items: center; gap: 16px; padding: 10px 2px;
+    border-bottom: 1px solid var(--line); margin-bottom: 10px;
+  }
+  .brand { font-family: var(--display); font-size: 18px; letter-spacing: .06em; color: var(--accent); white-space: nowrap; }
+  .brand small { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-left: 6px; }
+  .nav { display: flex; gap: 14px; margin-left: 18px; font-size: 12px; color: var(--muted); }
+  .nav span:first-child { color: var(--ink); }
+  .topbar .actions { margin-left: auto; display: flex; gap: 6px; }
+  .btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 5px 10px; border-radius: 3px; font-size: 12px; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+  .layout { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 10px; border-bottom: 1px solid var(--line);
+    font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  }
+
+  /* skills */
+  .skills .search { margin: 8px; width: calc(100% - 16px); padding: 6px 8px; border: 1px solid var(--line); background: var(--bg); border-radius: 3px; color: var(--ink); font-size: 12px; }
+  .group { margin: 0 8px 10px; }
+  .group h3 { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 10px 0 4px; font-weight: 500; }
+  .skill { display: flex; align-items: baseline; gap: 8px; padding: 3px 2px; border-bottom: 1px solid var(--line-soft); }
+  .skill span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .skill b { font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  /* sheet */
+
+  .meander {
+    height: 12px; margin: 0 0 0; opacity: .55;
+    background-repeat: repeat-x; background-size: 24px 12px;
+    background-position: 0 0;
+  }
+  body[data-variant="a"] .meander { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12'%3E%3Cpath d='M0 11h24M2 11V3h8v5h4V3h8' fill='none' stroke='%237a4a2c' stroke-width='1'/%3E%3C/svg%3E"); opacity: .7; }
+  body[data-variant="b"] .meander { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12'%3E%3Cpath d='M0 11h24M2 11V3h8v5h4V3h8' fill='none' stroke='%23b7a583' stroke-width='1'/%3E%3C/svg%3E"); opacity: .8; }
+  body[data-variant="c"] .meander { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12'%3E%3Cpath d='M0 11h24M2 11V3h8v5h4V3h8' fill='none' stroke='%23b08d3f' stroke-width='1'/%3E%3C/svg%3E"); opacity: .7; }
+
+  .who { display: flex; align-items: baseline; gap: 12px; padding: 10px 14px 8px; border-bottom: 1px solid var(--line); }
+  .who h1 { font-family: var(--display); font-weight: 500; font-size: 24px; margin: 0; letter-spacing: .01em; }
+  .who p { margin: 0; font-size: 12px; color: var(--muted); }
+  .who .no { margin-left: auto; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+
+  .sheet-grid { display: grid; grid-template-columns: minmax(340px, 430px) minmax(0, 1fr); }
+  .plate-zone { padding: 10px 12px 12px; border-right: 1px solid var(--line); min-width: 0; }
+  .zone-title { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .zone-title em { font-style: normal; letter-spacing: 0; text-transform: none; font-size: 11px; }
+  .plate-row { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .model { position: relative; }
+  .model svg { display: block; width: 100%; height: auto; }
+  .model svg.model-a, .model svg.model-b, .model svg.model-c { display: none; }
+  body[data-variant="a"] .model svg.model-a { display: block; }
+  body[data-variant="b"] .model svg.model-b { display: block; }
+  body[data-variant="c"] .model svg.model-c { display: block; }
+
+  .locations { list-style: none; margin: 0; padding: 0; }
+  .locations li {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 6px; align-items: baseline;
+    padding: 3px 4px; border-bottom: 1px solid var(--line-soft); font-size: 11px;
+  }
+  .locations li.sel { background: var(--sel); }
+  .locations .range { font-size: 9px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .locations .hp { font-size: 10px; font-weight: 500; text-align: right; min-width: 34px; font-variant-numeric: tabular-nums; }
+  .locations .ap { font-size: 9px; color: var(--muted); text-align: right; min-width: 26px; }
+  .locations .wound { grid-column: 1 / -1; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: var(--danger); }
+  .loc-head { font-size: 10px; color: var(--muted); display: grid; grid-template-columns: minmax(0,1fr) auto auto auto; gap: 6px; padding: 0 4px 4px; }
+
+  .editor { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); }
+  .editor strong { font-size: 12px; font-weight: 600; }
+  .editor .sp { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+  .editor button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 3px 7px; border-radius: 3px; font-size: 11px; }
+  .editor input { width: 44px; padding: 3px 4px; border: 1px solid var(--line); background: var(--surface); border-radius: 3px; font-size: 11px; text-align: center; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .chip { border: 1px solid var(--line); background: transparent; color: var(--muted); padding: 3px 8px; border-radius: 3px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+  .chip.on { background: var(--danger); border-color: var(--danger); color: var(--on-danger); }
+
+  .numbers { padding: 10px 14px 12px; min-width: 0; }
+  .chars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  .char { border: 1px solid var(--line); border-radius: var(--radius-sm); text-align: center; padding: 4px 0 3px; background: var(--bg); }
+  .char small { display: block; font-size: 9px; letter-spacing: .1em; color: var(--muted); }
+  .char b { font-family: var(--display); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .identity { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+  .identity label { font-size: 10px; color: var(--muted); }
+  .identity input { width: 100%; margin-top: 2px; padding: 4px 6px; border: 1px solid var(--line); background: var(--bg); border-radius: 3px; font-size: 11px; color: var(--ink); }
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+  .tile { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 5px 7px; background: var(--bg); min-width: 0; }
+  .tile small { display: block; font-size: 9px; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile b { font-family: var(--display); font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .tile b span { font-size: 10px; color: var(--muted); font-family: Roboto, sans-serif; }
+  .tile .mini { font-size: 9px; color: var(--muted); }
+  .tile .ctl { float: right; display: flex; gap: 6px; }
+  .tile .ctl button { border: 0; background: none; color: var(--ink); font-weight: 700; padding: 0; }
+  .effects { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+  .fatigue { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg); font-size: 11px; }
+  .fatigue .sel { margin-left: auto; color: var(--ink); }
+  .effect { display: flex; gap: 8px; align-items: baseline; padding: 5px 2px; border-bottom: 1px solid var(--line-soft); font-size: 11px; }
+  .effect b { font-weight: 500; }
+  .effect span { color: var(--muted); }
+  .tabs { display: flex; gap: 4px; margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 6px; }
+  .tabs button { border: 0; background: transparent; color: var(--muted); padding: 6px 10px; border-radius: 3px; font-size: 11px; letter-spacing: .04em; }
+  .tabs button.on { background: var(--sel); color: var(--ink); }
+
+  /* ---------- A: red-figure pottery ---------- */
+  body[data-variant="a"] {
+    --bg: #17110d; --surface: #1f1813; --chrome: #120d0a; --chrome-ink: #e8d2ae;
+    --chrome-line: #3a2a1f; --ink: #f0dfc2; --muted: #b09673; --line: #3b2c21; --line-soft: #2c2118;
+    --accent: #c86a3e; --on-accent: #17110d; --danger: #e0785a; --on-danger: #17110d;
+    --sel: #332015; --ok: #8fae86; --plate: #100c09;
+  }
+  body[data-variant="a"] .card, body[data-variant="a"] .plate-zone { box-shadow: none; }
+  body[data-variant="a"] .brand { letter-spacing: .1em; }
+  body[data-variant="a"] .who h1 { letter-spacing: .02em; }
+  body[data-variant="a"] .tile, body[data-variant="a"] .char { background: transparent; }
+  body[data-variant="a"] .plate-zone { background: linear-gradient(180deg, #1b140f 0%, #17110d 100%); }
+  body[data-variant="a"] .chips .chip.on { color: #17110d; }
+  body[data-variant="a"] .plate-frame { fill: var(--plate); stroke: #6b3f27; }
+  body[data-variant="a"] .clay { fill: #c06a3f; }
+  body[data-variant="a"] .clay-line { stroke: #1a1210; fill: none; stroke-width: 1.1; stroke-linecap: round; }
+  body[data-variant="a"] .clay-detail { stroke: #8a3f22; fill: none; stroke-width: .9; opacity: .55; }
+  body[data-variant="a"] .cut { stroke: #e0b083; stroke-width: 2.2; fill: none; stroke-linecap: round; }
+  body[data-variant="a"] .cut-drip { stroke: #c06a3f; stroke-width: 2.4; fill: none; stroke-linecap: round; }
+  body[data-variant="a"] .crack { stroke: #120d0a; stroke-width: 1.4; fill: none; }
+  body[data-variant="a"] .spear { stroke: #d9a05b; stroke-width: 2.2; stroke-linecap: round; }
+  body[data-variant="a"] .spear-outline { stroke: #120d0a; stroke-width: 4.6; stroke-linecap: round; }
+  body[data-variant="a"] .chip { fill: #e0b083; opacity: .5; }
+  body[data-variant="a"] .spear-tip { fill: #d9a05b; }
+  body[data-variant="a"] .hp-txt { fill: #e8d2ae; font: 600 10px var(--display); text-anchor: middle; paint-order: stroke; stroke: #120d0a; stroke-width: 2.5px; }
+
+  /* ---------- B: bronze automaton ---------- */
+  body[data-variant="b"] {
+    --bg: #ebe3d2; --surface: #f8f2e4; --chrome: #2f2a22; --chrome-ink: #f0e6d2;
+    --chrome-line: #4b4336; --ink: #2a241d; --muted: #6d5f4b; --line: #cfc0a3; --line-soft: #e2d7c0;
+    --accent: #8a5a2b; --on-accent: #f8f2e4; --danger: #8c3b2e; --on-danger: #f8f2e4;
+    --sel: #eee2c9; --ok: #4f6f57; --plate: #f3ecdb;
+  }
+  body[data-variant="b"] .plate-zone { background: #f3ecdb; }
+  body[data-variant="b"] .marble { fill: #f7f1e2; stroke: #c9b995; stroke-width: 1; }
+  body[data-variant="b"] .frame-line { fill: none; stroke: #b7a583; stroke-width: 1; }
+  body[data-variant="b"] .bronze { fill: #a9743a; stroke: #6f451f; stroke-width: 1.1; }
+  body[data-variant="b"] .bronze-dark { fill: #8a5c2c; stroke: #6f451f; stroke-width: 1; }
+  body[data-variant="b"] .rivet { fill: #5c3a18; }
+  body[data-variant="b"] .socket { fill: #3a2a18; }
+  body[data-variant="b"] .pin { stroke: #b98a4a; stroke-width: 2.4; stroke-linecap: round; }
+  body[data-variant="b"] .dent { fill: #8a5c2c; stroke: #6f451f; stroke-width: 1; }
+  body[data-variant="b"] .crack { stroke: #4b2f12; stroke-width: 1; fill: none; }
+  body[data-variant="b"] .shaft { stroke: #3a2a18; stroke-width: 2.6; stroke-linecap: round; }
+  body[data-variant="b"] .arrowhead { fill: #b98a4a; stroke: #6f451f; stroke-width: .8; }
+  body[data-variant="b"] .fletch { fill: #7d2f2a; }
+  body[data-variant="b"] .hp-txt { fill: #33220f; font: 600 10px var(--display); text-anchor: middle; }
+
+  /* ---------- C: mosaic ---------- */
+  body[data-variant="c"] {
+    --bg: #efe4cf; --surface: #f8f0de; --chrome: #232a33; --chrome-ink: #f2e7d2;
+    --chrome-line: #3d4652; --ink: #232a33; --muted: #6f6553; --line: #d8c7a6; --line-soft: #e7dabf;
+    --accent: #a94e2c; --on-accent: #fbf3e3; --danger: #7d2f2a; --on-danger: #fbf3e3;
+    --sel: #ead9ba; --ok: #4f6f63; --plate: #e9dcc2;
+  }
+  body[data-variant="c"] .plate-zone { background: #f1e5d0; }
+  body[data-variant="c"] .mosaic-plate { fill: #efe3cb; stroke: #c9b48c; }
+  body[data-variant="c"] .tessera-strip { fill: url(#tessera-strip); }
+  body[data-variant="c"] .hp-txt { fill: #232a33; font: 600 10px var(--display); text-anchor: middle; paint-order: stroke; stroke: #f1e5d0; stroke-width: 3px; stroke-linejoin: round; }
+  body[data-variant="c"] .crack { stroke: #8a6a45; stroke-width: .9; fill: none; opacity: .8; }
+  body[data-variant="c"] .who h1 { letter-spacing: .01em; }
+</style>
+</head>
+<body data-variant="a">
+
+<div class="switcher">
+  <b>Mythras Companion</b>
+  <button data-set="a" aria-pressed="true">A · Краснофигурная керамика</button>
+  <button data-set="b" aria-pressed="false">B · Бронзовый автомат</button>
+  <button data-set="c" aria-pressed="false">C · Мозаика</button>
+  <span class="hint">Общая сетка; меняется тема, плита и модель. Переключение — A / B / C.</span>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">MYTHRAS <small>Companion</small></div>
+    <div class="nav"><span>Лист</span><span>Библиотека</span><span>Конструктор</span><span>Правила</span></div>
+    <div class="actions">
+      <button class="btn">Сохранить JSON</button>
+      <button class="btn primary">Проверка навыка</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <aside class="card skills">
+      <div class="panel-head"><span>Навыки</span><span>＋ Прокачка</span></div>
+      <input class="search" placeholder="Поиск навыка">
+      <div class="group">
+        <h3>Сопротивления</h3>
+        <div class="skill"><span>Brawn</span><b>24</b></div>
+        <div class="skill"><span>Endurance</span><b>36</b></div>
+        <div class="skill"><span>Evade</span><b>45</b></div>
+        <div class="skill"><span>Willpower</span><b>45</b></div>
+      </div>
+      <div class="group">
+        <h3>Стандартные</h3>
+        <div class="skill"><span>Athletics</span><b>28</b></div>
+        <div class="skill"><span>Locale</span><b>48</b></div>
+        <div class="skill"><span>Perception</span><b>29</b></div>
+        <div class="skill"><span>Stealth</span><b>25</b></div>
+        <div class="skill"><span>Customs</span><b>68</b></div>
+      </div>
+      <div class="group">
+        <h3>Профессиональные</h3>
+        <div class="skill"><span>Folk Magic</span><b>60</b></div>
+        <div class="skill"><span>Binding</span><b>59</b></div>
+        <div class="skill"><span>Devotion</span><b>76</b></div>
+        <div class="skill"><span>Exhort</span><b>49</b></div>
+        <div class="skill"><span>Invocation</span><b>90</b></div>
+        <div class="skill"><span>Shaping</span><b>60</b></div>
+      </div>
+      <div class="group">
+        <h3>Страсти</h3>
+        <div class="skill"><span>Ненависть к тиранам</span><b>70</b></div>
+      </div>
+    </aside>
+
+    <main>
+      <section class="card">
+        <div class="who">
+          <h1>Анафема из Меероса</h1>
+          <p>Human · Barbarian · Warrior</p>
+          <span class="no">Mythras · Companion</span>
+        </div>
+
+        <div class="meander" aria-hidden="true"></div>
+
+        <div class="sheet-grid">
+          <section class="plate-zone">
+            <div class="zone-title"><span>Локации попаданий</span><em>HP · AP</em></div>
+            <div class="plate-row">
+              <div class="model">
+                <!-- A: red-figure vase silhouette -->
+                <svg class="model-a" viewBox="0 0 220 380" role="img" aria-label="Краснофигурный силуэт в хитоне">
+                  <rect class="plate-frame" x="1" y="1" width="218" height="378" rx="6"/>
+                  <ellipse class="clay" cx="110" cy="38" rx="18" ry="22"/>
+                  <path class="clay" d="M102 56h16v22h-16Z"/>
+                  <!-- draped chiton: shoulders, waist, hem -->
+                  <path class="clay" d="M72 84q38-16 76 0l-6 68-6 60q-26 10-52 0l-6-60Z"/>
+                  <path class="clay" d="M74 86 60 154l-4 62q-4 14 6 14 8 0 8-14l4-62 6-56Z"/>
+                  <path class="clay" d="M88 214h16l-4 78-2 66H80l2-66Z"/>
+                  <path class="clay" d="M116 214h16l8 78 2 66h-18l-2-66Z"/>
+                  <path class="clay" d="M80 356h22l2 8H78Z M118 356h22l2 8h-26Z"/>
+                  <ellipse class="clay" cx="61" cy="224" rx="7" ry="6"/>
+                  <!-- belt and folds -->
+                  <path class="clay-line" d="M84 156q26 8 52 0M84 163q26 8 52 0"/>
+                  <path class="clay-detail" d="M96 170q-3 18 0 36M110 170v38M124 170q3 18 0 36M88 208q22 8 44 0"/>
+                  <path class="clay-detail" d="M100 70q10 6 20 0M108 128q-6-10 0-18M108 128q8-8 14-2"/>
+                  <!-- severed left arm: glazed stump, cut and drips -->
+                  <path d="M144 84l18 30-14 12-8-24Z" fill="#100c09"/>
+                  <path d="M146 116l14-2-6 12-10 2Z" fill="#100c09"/>
+                  <!-- crushed chest -->
+                  <path class="crack" d="M96 104l10 12-5 9 12 11-7 9M114 96l5 16 11 4-5 11 12 9M102 142l13 6 9-7"/>
+                  <path class="chip" d="M118 116l5-3 3 5-4 4Z M100 130l4 2-2 4-4-1Z"/>
+                  <!-- impaled right thigh -->
+                  <path class="spear-outline" d="M50 320 130 292"/>
+                  <path class="spear" d="M50 320 130 292"/>
+                  <path class="spear-tip" d="M130 292l12-5-3 12Z"/>
+                </svg>
+
+                <!-- B: bronze automaton on marble -->
+                <svg class="model-b" viewBox="0 0 220 380" role="img" aria-label="Бронзовый автомат">
+                  <rect class="marble" x="1" y="1" width="218" height="378" rx="4"/>
+                  <rect class="frame-line" x="7" y="7" width="206" height="366" rx="2"/>
+                  <ellipse class="bronze" cx="110" cy="44" rx="19" ry="23"/>
+                  <rect class="bronze" x="103" y="64" width="14" height="14"/>
+                  <path class="bronze" d="M80 84h60l-4 110q-26 9-52 0Z"/>
+                  <path class="bronze" d="M84 200q26 9 52 0l-3 66q-23 7-46 0Z"/>
+                  <path class="bronze" d="M79 88 63 96l-7 102q-2 20 11 20 9 0 7-16l4-56 4-44Z"/>
+                  <path class="bronze" d="M88 272h16l-2 62-2 28H80l2-28Z"/>
+                  <path class="bronze" d="M116 272h16l8 62 2 28h-20l-2-28Z"/>
+                  <ellipse class="bronze" cx="57" cy="217" rx="7" ry="8"/>
+                  <path class="bronze" d="M80 360h22l2 9H78Z M118 360h22l2 9h-26Z"/>
+                  <circle class="rivet" cx="82" cy="88" r="2.6"/><circle class="rivet" cx="138" cy="88" r="2.6"/>
+                  <circle class="rivet" cx="90" cy="270" r="2.6"/><circle class="rivet" cx="130" cy="270" r="2.6"/>
+                  <circle class="rivet" cx="92" cy="330" r="2.2"/><circle class="rivet" cx="128" cy="330" r="2.2"/>
+                  <path class="crack" d="M96 116l10 12M132 108l-8 16M110 140l-6 12M122 150l10 6"/>
+                  <path class="dent" d="M100 120l16-6 12 14-6 20-18 4-10-14Z"/>
+                  <circle class="socket" cx="142" cy="92" r="6"/>
+                  <path class="pin" d="M142 92l10 4"/>
+                  <path class="shaft" d="M56 316 128 288"/>
+                  <path class="arrowhead" d="M128 288l12-7-3 12Z"/>
+                  <path class="fletch" d="M56 316l-10-6 2 9Z"/>
+                </svg>
+
+                <!-- C: mosaic, tesserae generated by script -->
+                <svg class="model-c" viewBox="0 0 220 380" role="img" aria-label="Мозаичная фигура">
+                  <defs>
+                    <linearGradient id="tessera-strip" x1="0" y1="0" x2="220" y2="0" gradientUnits="userSpaceOnUse">
+                      <stop offset="0" stop-color="#a94e2c"/><stop offset=".25" stop-color="#c08a4a"/>
+                      <stop offset=".5" stop-color="#2b3440"/><stop offset=".75" stop-color="#b06a3c"/>
+                      <stop offset="1" stop-color="#a94e2c"/>
+                    </linearGradient>
+                  </defs>
+                  <rect class="mosaic-plate" x="1" y="1" width="218" height="378" rx="3"/>
+                  <g id="mosaic-bands"></g>
+                  <g id="mosaic-figure"></g>
+                  <path d="M40 338 142 296" stroke="#26303a" stroke-width="3" stroke-linecap="round"/>
+                  <path d="M142 296l13-5-4 13Z" fill="#26303a"/>
+                  <path d="M148 162l22-5" stroke="#f1e5d0" stroke-width="2.5" stroke-linecap="round"/>
+                  <path class="crack" d="M92 112l12 14-6 10 14 12-8 10M110 104l6 18 12 4-6 12 14 10"/>
+                </svg>
+              </div>
+
+              <div>
+                <div class="loc-head"><span>Часть</span><span>d20</span><span>HP</span><span>AP</span></div>
+                <ol class="locations">
+                  <li><span>Голова</span><span class="range">19–20</span><span class="hp">4/5</span><span class="ap">5</span></li>
+                  <li><span>Левая рука</span><span class="range">16–18</span><span class="hp">−2/4</span><span class="ap">3</span><span class="wound">Отсечена</span></li>
+                  <li><span>Правая рука</span><span class="range">13–15</span><span class="hp">4/4</span><span class="ap">0</span></li>
+                  <li class="sel"><span>Грудь</span><span class="range">10–12</span><span class="hp">5/7</span><span class="ap">6</span><span class="wound">Раздроблена</span></li>
+                  <li><span>Живот</span><span class="range">7–9</span><span class="hp">6/6</span><span class="ap">0</span></li>
+                  <li><span>Левая нога</span><span class="range">4–6</span><span class="hp">5/5</span><span class="ap">0</span></li>
+                  <li><span>Правая нога</span><span class="range">1–3</span><span class="hp">5/5</span><span class="ap">0</span><span class="wound">Пронзена</span></li>
+                </ol>
+              </div>
+            </div>
+
+            <div class="editor">
+              <strong>Грудь</strong>
+              <span class="sp">
+                <button>− HP</button><input value="1"><button>＋ HP</button>
+              </span>
+            </div>
+            <div class="chips">
+              <button class="chip">Отсечена</button>
+              <button class="chip on">Раздроблена</button>
+              <button class="chip">Пронзена</button>
+            </div>
+          </section>
+
+          <section class="numbers">
+            <div class="chars">
+              <div class="char"><small>STR</small><b>13</b></div>
+              <div class="char"><small>CON</small><b>11</b></div>
+              <div class="char"><small>SIZ</small><b>10</b></div>
+              <div class="char"><small>DEX</small><b>15</b></div>
+              <div class="char"><small>INT</small><b>14</b></div>
+              <div class="char"><small>POW</small><b>15</b></div>
+              <div class="char"><small>CHA</small><b>13</b></div>
+            </div>
+            <div class="identity">
+              <label>Frame<input value="Medium"></label>
+              <label>Рост, см<input value="175"></label>
+              <label>Вес, кг<input value="70"></label>
+            </div>
+            <div class="tiles">
+              <div class="tile"><small>Damage</small><b>+1d4</b></div>
+              <div class="tile"><small>Experience</small><b>+1</b></div>
+              <div class="tile"><small>Initiative</small><b>12</b><div class="mini">Броня −3 · уст. 0</div></div>
+              <div class="tile"><small>Movement</small><b>6 м</b><div class="mini">бег · плавание</div></div>
+              <div class="tile"><small>Action Points</small><b>3<span>/3</span></b><span class="ctl"><button>−</button><button>＋</button></span></div>
+              <div class="tile"><small>Magic Points</small><b>15<span>/15</span></b><span class="ctl"><button>−</button><button>＋</button></span></div>
+              <div class="tile"><small>Luck</small><b>2<span>/2</span></b><span class="ctl"><button>−</button><button>＋</button></span></div>
+              <div class="tile"><small>Healing Rate</small><b>2</b></div>
+            </div>
+            <div class="effects">
+              <div class="fatigue"><span>Усталость</span><span class="sel">Fresh ▾</span></div>
+              <div class="effect"><b>Благословение войны</b><span>+1 STR · сцена</span></div>
+              <div class="effect"><b>Щит предка</b><span>+2 AP груди · 3 раунда</span></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <nav class="tabs">
+        <button class="on">Боевой стиль и оружие</button>
+        <button>Магия</button><button>Броня</button><button>Снаряжение</button><button>Игровые заметки</button>
+      </nav>
+    </main>
+  </div>
+</div>
+
+<script>
+  // ---- variant switcher ----
+  const body = document.body;
+  const buttons = Array.from(document.querySelectorAll('.switcher button'));
+  function setVariant(v) {
+    body.dataset.variant = v;
+    buttons.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.set === v)));
+    localStorage.setItem('antiquity-variant', v);
+  }
+  buttons.forEach(b => b.addEventListener('click', () => setVariant(b.dataset.set)));
+  setVariant(localStorage.getItem('antiquity-variant') || 'a');
+
+  // ---- mosaic figure ----
+  const PALETTE = {
+    clay:  ['#b4552f', '#c06a3f', '#a54b28', '#c97a4e'],
+    ochre: ['#b07a3c', '#c08a4a', '#9c6a32', '#cb9a5c'],
+  };
+  const PARTS = [
+    { key:'head', kind:'ellipse', cx:110, cy:40, rx:20, ry:23, pal:'clay' },
+    { key:'neck', poly:[[102,61],[118,61],[118,78],[102,78]], pal:'clay' },
+    { key:'torso', poly:[[76,80],[144,80],[137,176],[83,176]], pal:'clay' },
+    { key:'abdomen', poly:[[83,178],[137,178],[131,236],[89,236]], pal:'clay' },
+    { key:'rightArm', poly:[[76,84],[54,96],[50,214],[74,214],[78,150],[86,112]], pal:'ochre' },
+    { key:'leftArm', poly:[[144,84],[166,96],[170,214],[146,214],[142,150],[134,112]], pal:'ochre' },
+    { key:'rightLeg', poly:[[86,238],[108,238],[104,310],[104,366],[76,366],[82,310]], pal:'ochre' },
+    { key:'leftLeg', poly:[[112,238],[134,238],[138,310],[144,366],[116,366],[116,310]], pal:'ochre' },
+  ];
+  function pointInPoly(x, y, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function inPart(x, y, part) {
+    if (part.kind === 'ellipse') {
+      const dx = (x - part.cx) / part.rx, dy = (y - part.cy) / part.ry;
+      return dx * dx + dy * dy <= 1;
+    }
+    return pointInPoly(x, y, part.poly);
+  }
+  const SVGC = 'http://www.w3.org/2000/svg';
+  function buildMosaic() {
+    const host = document.getElementById('mosaic-figure');
+    if (!host || host.childElementCount) return;
+    const render = document.createElementNS(SVGC, 'g');
+    const size = 6, gap = 0.8;
+    const cuts = { leftArm: 166 };       // severed above this line
+    for (const part of PARTS) {
+      for (let y = 14; y < 366; y += size) {
+        for (let x = 46; x < 176; x += size) {
+          const cx = x + size / 2, cy = y + size / 2;
+          if (!inPart(cx, cy, part)) continue;
+          // severed left arm: keep the shoulder, ragged edge at the cut
+          if (part.key === 'leftArm') {
+            if (cy > cuts.leftArm + 6) continue;
+            if (cy > cuts.leftArm && Math.random() < 0.6) continue;
+          }
+          // impalement: a spear of dark tesserae through the right thigh only
+          const sx = 56, sy = 322, ex = 128, ey = 292;
+          const dx = ex - sx, dy = ey - sy;
+          const t = Math.max(0, Math.min(1, ((cx - sx) * dx + (cy - sy) * dy) / (dx * dx + dy * dy)));
+          const px = sx + t * dx, py = sy + t * dy;
+          const nearSpear = part.key === 'rightLeg' && Math.hypot(cx - px, cy - py) < 4.5;
+          // crushed chest: broken, missing and darkened tesserae in a rough patch
+          const crushDist = part.key === 'torso' ? Math.hypot(cx - 110, cy - 128) : 99;
+          const crushed = crushDist < 18;
+          const chipped = crushDist < 24 && crushDist >= 18;
+          if (crushed && Math.random() < 0.32) continue;   // missing tesserae
+          let colour;
+          if (nearSpear) colour = '#26303a';
+          else if (crushed) colour = '#7a5330';
+          else if (chipped) colour = '#96683a';
+          else {
+            const list = PALETTE[part.pal];
+            colour = list[Math.floor(Math.random() * list.length)];
+          }
+          const rect = document.createElementNS(SVGC, 'rect');
+          rect.setAttribute('x', x); rect.setAttribute('y', y);
+          rect.setAttribute('width', size - gap); rect.setAttribute('height', size - gap);
+          rect.setAttribute('fill', colour);
+          rect.setAttribute('rx', '0.5');
+          render.appendChild(rect);
+        }
+      }
+    }
+    host.appendChild(render);
+    const bands = document.getElementById('mosaic-bands');
+    if (bands) {
+      const cycle = ['#a94e2c', '#c08a4a', '#2b3440', '#b06a3c', '#8f6a3e'];
+      for (let i = 0, x = 8; x < 212; i++, x += 6) {
+        for (const y of [8, 366]) {
+          const rect = document.createElementNS(SVGC, 'rect');
+          rect.setAttribute('x', x); rect.setAttribute('y', y);
+          rect.setAttribute('width', 5); rect.setAttribute('height', 5);
+          rect.setAttribute('fill', cycle[i % cycle.length]);
+          bands.appendChild(rect);
+        }
+      }
+    }
+  }
+  buildMosaic();
+</script>
+</body>
+</html>
