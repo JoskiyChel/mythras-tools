@@ -25,6 +25,8 @@ export interface SheetEffect {
   /** Narrative-only effects are valid: modifiers may be empty. */
   description?: string;
   modifiers: SheetModifier[];
+  /** A trauma-created effect; removing either side removes the other. */
+  injury?: { location: HitLocation; type: string };
 }
 export interface CompanionState {
   effects?: SheetEffect[];
@@ -75,14 +77,17 @@ export function companionState(character: CompanionCharacter): CompanionState {
   return character.companion ?? (character.companion = {});
 }
 
-/** Mythras Core Rules, Special Effects: dismember, crush, impale. */
-export const WOUND_TYPES = ['Отсечена','Раздроблена','Пронзена'] as const;
+/** Physical traumas are mutually exclusive; bleeding and scars may accompany any of them. */
+export const WOUND_TYPES = ['Отсечена','Увечье','Пронзена','Кровотечение','Шрам'] as const;
+export const MAJOR_WOUND_TYPES = ['Отсечена','Увечье','Пронзена'] as const;
 
 /** Injuries are stored as an array per location; a legacy save may hold one string. */
 export function locationInjuries(character: CompanionCharacter, location: HitLocation): string[] {
   const raw: unknown = character.companion?.injuries?.[location];
-  if (Array.isArray(raw)) return raw.filter((value): value is string => typeof value === 'string' && value !== '');
-  return typeof raw === 'string' && raw ? [raw] : [];
+  const normalize = (value: string) => value === 'Раздроблена' ? 'Увечье' : value;
+  if (Array.isArray(raw)) return raw.filter((value): value is string => typeof value === 'string' && value !== '')
+    .map(normalize);
+  return typeof raw === 'string' && raw ? [normalize(raw)] : [];
 }
 
 export function setLocationInjuries(character: CompanionCharacter, location: HitLocation, types: string[]): void {
@@ -178,7 +183,9 @@ export function magicPointMaximum(character: CompanionCharacter,
 
 export function maxLocationHp(character: CompanionCharacter, location: HitLocation,
   tentative: Partial<Record<CharacteristicKey,number>> = {}): number {
-  return getMaximumHp(calculationCharacter(character,tentative),location);
+  const base=getMaximumHp(calculationCharacter(character,tentative),location);
+  // Maim: the victim permanently loses 1 HP in the affected location.
+  return Math.max(0, base - (locationInjuries(character,location).includes('Увечье') ? 1 : 0));
 }
 
 /** Initialises a new/pristine character once, without touching wounds in any

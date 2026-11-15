@@ -362,14 +362,82 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
 .add-skill-note { display:block; margin-top:4px; font-size:11px; color:var(--ui-muted); }
 .value-new { color:var(--ui-accent); font-size:11px; font-weight:600; }
 
-/* Damage values that come up most often at the table. */
-.quick-damage { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-top:6px; }
-.quick-damage > span { font-size:11px; color:var(--ui-muted); margin-right:2px; }
-.quick-damage button { min-height:26px; padding:3px 8px; font-size:11px; border:1px solid var(--ui-border); border-radius:5px; background:var(--ui-surface); color:var(--ui-danger); }
-.quick-damage button:hover { border-color:var(--ui-danger); background:var(--ui-danger-soft); }
-
 /* Keep the skills column in view during play on desktop. */
 @media(min-width:681px) {
   .skills-panel { position:sticky; top:8px; max-height:calc(100vh - 24px); display:flex; flex-direction:column; }
   .skills-panel .panel-content { overflow:auto; min-height:0; }
 }
+
+/* ===== Direction A: red-figure pottery ================================= */
+:host { background:var(--ui-canvas); color:var(--ui-ink); }
+.card { background:var(--ui-surface); border-color:var(--ui-border); box-shadow:0 1px 0 rgb(0 0 0 / 35%); }
+.masthead { background:var(--ui-accent); color:var(--ui-on-dark); }
+.masthead-brand small { color:rgb(26 18 13 / 68%); }
+.masthead-tools button, .masthead-tools a { background:var(--ui-accent); border-color:var(--ui-accent); color:var(--ui-on-dark); }
+.masthead-tools button:hover, .masthead-tools a:hover { background:var(--ui-accent-hover); border-color:var(--ui-accent-hover); }
+.save-status { color:var(--ui-muted); }
+.card-title, .tab-header, .tradition-heading { border-color:var(--ui-border); }
+.character-header { background:linear-gradient(180deg,#1c140f,#17110d); border-bottom:1px solid #6b3f27; position:relative; }
+.character-header h1 { font-family:var(--ui-display); color:#f0dfc2; letter-spacing:.02em; }
+.character-header p, .year-label { color:var(--ui-muted); }
+.character-header::after {
+  content:""; position:absolute; left:0; right:0; bottom:-1px; height:10px; pointer-events:none; opacity:.65;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='10'%3E%3Cpath d='M0 9h24M2 9V3h8v4h4V3h8' fill='none' stroke='%23c86a3e' stroke-width='1'/%3E%3C/svg%3E");
+  background-repeat:repeat-x; background-size:24px 10px;
+}
+.primary { background:var(--ui-accent); color:var(--ui-on-dark); }
+.primary:hover { background:var(--ui-accent-hover); }
+.quiet, .step, .injury-chip, .location-editor, .effect-create, .add-skill, .picker-list button { background:var(--ui-surface); color:var(--ui-ink); border-color:var(--ui-border); }
+.quiet:hover, .step:hover, .injury-chip:hover { background:var(--ui-raised); }
+.skill-name, .percent, .value-old, .change-value, .change-indirect, .resource strong, .attribute strong,
+.characteristic > strong, .tile b, .loc-hp, .loc-name, .armour-row strong, .equipment-item strong { color:var(--ui-olive); }
+.minor-note, .fatigue, .dialog-result, .tab-strip button.active, .spell-description { background:var(--ui-canvas); }
+.search-field, .identity-mini input, .field-label input, .field-label textarea,
+.modifier-row select, .modifier-row input, .tab-strip button { background:var(--ui-surface); color:var(--ui-ink); border-color:var(--ui-border); }
+.zone-title, .skill-group h3, .tradition-heading h3, .tab-intro h2 { color:var(--ui-olive); }
+.body-zone { background:radial-gradient(circle at 55% 28%, #241a14 0%, #17110d 72%); }
+.body-svg { max-width:260px; height:auto; }
+.body-plate { fill:#100c09; stroke:#6b3f27; stroke-width:2; }
+.body-joint { fill:#b4552f; stroke:#120d0a; stroke-width:1.2; }
+.body-location { stroke:#120d0a; stroke-width:1.2; transition:filter .15s, stroke .15s; }
+.body-location:hover { stroke:#d9a05b; }
+.body-location.selected { stroke:#f0dfc2; stroke-width:2.6; }
+.body-details { fill:none; stroke:#5a2e1b; stroke-width:1.1; opacity:.65; pointer-events:none; }
+.wound-seam { stroke:#f0dfc2; stroke-width:2; stroke-dasharray:5 3; fill:none; pointer-events:none; }
+.wound-impale line { stroke:#d9a05b; stroke-width:3.2; stroke-linecap:round; }
+.wound-impale circle { fill:#26140c; stroke:#d9a05b; stroke-width:1.4; }
+.wound-bleed path { fill:#a8483a; stroke:#e0785a; stroke-width:.6; }
+.wound-scar path { fill:none; stroke:#e8d2ae; stroke-width:2; stroke-linecap:round; opacity:.85; }
+.location-list { border-top:1px solid var(--ui-border); }
+.location-row { color:var(--ui-ink); border-bottom-color:var(--ui-border); }
+.location-row:hover { background:var(--ui-raised); }
+.location-row.selected { background:var(--ui-olive-soft); border-color:#6b3f27; }
+.location-row .loc-roll, .location-row .loc-ap, .loc-injury { color:var(--ui-muted); }
+.location-row .loc-injury { color:var(--ui-danger); }
+.location-editor { border-color:var(--ui-border); }
+.hp-edit-controls button, .quick-damage button { background:var(--ui-raised); color:var(--ui-ink); border-color:var(--ui-border); }
+.injury-chip.on { background:var(--ui-danger); border-color:var(--ui-danger); color:var(--ui-on-dark); }
+.effect-row { background:var(--ui-surface); border-color:var(--ui-border); }
+.effect-row strong { color:var(--ui-olive); }
+.effect-actions { display:flex; align-items:flex-start; gap:4px; }
+.effect-actions button { background:none; border:0; color:var(--ui-muted); padding:2px 4px; }
+.effect-actions button:hover { color:var(--ui-accent); }
+.effect-dialog, .picker-dialog { width:min(100%,680px); }
+.effect-create { border:0; background:transparent; padding:0; }
+.effect-dialog .minor-note { margin-bottom:10px; }
+.picker-list { list-style:none; margin:10px 0 0; padding:0; max-height:55vh; overflow:auto; }
+.picker-list li + li { border-top:1px solid var(--ui-border); }
+.picker-list button { width:100%; display:flex; flex-direction:column; gap:2px; text-align:left; border:0; border-radius:0; padding:9px 8px; background:transparent; }
+.picker-list button:hover { background:var(--ui-raised); }
+.picker-list span { color:var(--ui-ink); font-weight:600; }
+.picker-list small { color:var(--ui-muted); }
+.picker-empty { padding:10px 8px; color:var(--ui-muted); }
+.inline-checkbox { display:flex; align-items:center; gap:6px; margin-top:10px; color:var(--ui-secondary); font-size:12px; }
+.tradition-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.body-hand, .body-foot { stroke:#120d0a; stroke-width:1; }
+.body-hair { fill:#2a150d; stroke:none; }
+.overlay { background:rgb(10 7 5 / .74); }
+.injury-chip:disabled { opacity:.28; cursor:not-allowed; }
+.effect-row small { color:var(--ui-secondary); }
+.wound-impale line { stroke:#24120b; stroke-width:4; }
+.wound-impale circle { fill:#d9a05b; stroke:#24120b; stroke-width:1.2; }

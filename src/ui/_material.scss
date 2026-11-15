@@ -14,8 +14,8 @@ $olive: (
   contrast: (50: #292c27, 100: #292c27, 200: #292c27, 300: #292c27,
     400: #fffdf9, 500: #fffdf9, 600: #fffdf9, 700: #fffdf9, 800: #fffdf9, 900: #fffdf9)
 );
-$theme: mat.define-light-theme((
-  color: (primary: mat.define-palette($bronze, 600), accent: mat.define-palette($olive, 600), warn: mat.define-palette(mat.$red-palette, 800)),
+$theme: mat.define-dark-theme((
+  color: (primary: mat.define-palette($bronze, 400), accent: mat.define-palette($olive, 300), warn: mat.define-palette(mat.$red-palette, 300)),
   typography: mat.define-typography-config($font-family: 'Roboto, Helvetica Neue, sans-serif'),
   density: 0
 ));

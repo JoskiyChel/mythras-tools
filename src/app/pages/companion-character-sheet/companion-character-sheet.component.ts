@@ -7,7 +7,14 @@ import { Character } from '../../model/character';
 import { Skill } from '../../model/skill';
 import { CombatStyle } from '../../model/combat-style';
 import { CharacterWeapon } from '../../model/character-weapon';
+import { Weapon } from '../../model/weapon';
+import { Item } from '../../model/item';
+import { Equipment } from '../../model/equipment';
 import { SpecialEffectsService } from '../../services/special-effects.service';
+import { WeaponService } from '../../services/weapon.service';
+import { ARMOUR_PRESETS, ArmourPreset, applyArmourPreset } from '../../services/armour-catalog';
+import ToolsShop from '../../jsons/tools-shop.json';
+import { folkMagic, sorceryMagic, theismMagic } from '../../services/magic.service';
 import { BuilderSection } from '../../services/builder-navigation';
 import { Spell } from '../../model/spell';
 import { AppStorageService, DebouncedSaveHandle } from '../../services/app-storage.service';
@@ -20,10 +27,10 @@ import {
   companionState, currentCharacteristic, skillTotal, attributeTotal, damageModifier,
   calculationCharacter, skillModifierTotal,
   magicPointMaximum, maxLocationHp, displayedLocationHp, initializePristineHitPoints, movementSummary,
-  skillGroups, severity, fatigueRule, canAct, changeLocationHp, findTraditionSkill, shapingPointMaximum,
+  skillGroups, fatigueRule, canAct, changeLocationHp, findTraditionSkill, shapingPointMaximum,
   visibleProfessionalSkills,
   DIFFICULTY_STEPS, DifficultyStep, CheckThresholds, checkThresholds, augmentingBonus,
-  WOUND_TYPES, locationInjuries, setLocationInjuries, magicModifier,
+  WOUND_TYPES, MAJOR_WOUND_TYPES, locationInjuries, setLocationInjuries, magicModifier,
   theismPoolLimit, theismIntensity, animismMaxSpiritPow, animismSpiritLimit,
   animismSpiritDamage, mysticismTotalIntensity, mysticismTalentIntensity, mysticismTrainedLimit,
   sorceryIntensity, sorceryMemoryLimit, folkMagicStartingSpells,
@@ -55,49 +62,49 @@ interface Tradition { title:string; subtitle:string; spells:{name:string;descrip
  * Coordinates live in a 300 × 470 viewBox. */
 const LOCATION_GEOMETRY: Record<HitLocation, LocationGeometry> = {
   head: {
-    path:'M128 44A22 27 0 1 0 172 44A22 27 0 1 0 128 44Z',
-    seam:'M132 74H168',
-    impale:[112,24,188,58],
+    path:'M150 14c-16 0-26 12-26 28 0 13 8 25 26 33 18-8 26-20 26-33 0-16-10-28-26-28Z',
+    seam:'M132 72Q150 80 168 72',
+    impale:[108,22,196,56],
     anchorX:150, anchorY:44,
   },
   chest: {
-    path:'M96 90Q150 74 204 90L196 196Q150 206 104 196Z',
-    seam:'M104 188Q150 198 196 188',
-    impale:[92,120,208,156],
-    anchorX:150, anchorY:146,
+    path:'M104 96C116 84 132 80 150 80s34 4 46 16l-7 42-4 54c-11 5-23 7-35 7s-24-2-35-7l-4-54Z',
+    seam:'M104 190Q150 202 196 190',
+    impale:[90,122,210,158],
+    anchorX:150, anchorY:144,
   },
   abdoment: {
-    path:'M104 198Q150 208 196 198L188 290Q150 300 112 290Z',
+    path:'M112 202c12 5 26 7 38 7s26-2 38-7l5 46-2 30c-13 5-27 8-41 8s-28-3-41-8l-2-30Z',
     seam:'M112 282Q150 294 188 282',
-    impale:[98,250,202,232],
-    anchorX:150, anchorY:248,
+    impale:[96,250,204,232],
+    anchorX:150, anchorY:244,
   },
   rightArm: {
-    path:'M96 94L76 104L70 180L66 250Q64 274 78 274Q90 274 88 252L90 182L96 122Z',
-    stubPath:'M96 94L76 104L73 160L90 160L96 122Z',
-    seam:'M73 160H90',
-    impale:[58,202,96,166],
+    path:'M106 98C92 100 84 108 81 122L75 194C74 202 79 207 85 206L89 248C90 260 87 270 91 275C97 281 105 277 106 266L109 210L115 150L118 112Z',
+    stubPath:'M106 98C92 100 84 108 81 122L77 158L94 162L101 124Z',
+    seam:'M77 158L94 162',
+    impale:[58,200,104,166],
     anchorX:78, anchorY:214, stubAnchorY:140,
   },
   leftArm: {
-    path:'M204 94L224 104L230 180L234 250Q236 274 222 274Q210 274 212 252L210 182L204 122Z',
-    stubPath:'M204 94L224 104L227 160L210 160L204 122Z',
-    seam:'M210 160H227',
-    impale:[204,166,242,202],
+    path:'M194 98C208 100 216 108 219 122L225 194C226 202 221 207 215 206L211 248C210 260 213 270 209 275C203 281 195 277 194 266L191 210L185 150L182 112Z',
+    stubPath:'M194 98C208 100 216 108 219 122L223 158L206 162L199 124Z',
+    seam:'M223 158L206 162',
+    impale:[196,166,242,200],
     anchorX:222, anchorY:214, stubAnchorY:140,
   },
   rightLeg: {
-    path:'M128 292L120 378L124 436Q108 440 108 452L108 462L146 462L144 436L142 378L148 292Z',
-    stubPath:'M128 292L124 372L144 372L148 292Z',
-    seam:'M124 372H144',
-    impale:[100,344,150,362],
+    path:'M122 286C112 292 108 304 108 318L104 370C104 380 109 386 115 386L113 436C113 448 109 455 117 458C125 461 132 453 132 443L134 386C140 382 142 374 142 364L146 292Z',
+    stubPath:'M122 286C112 292 108 304 108 318L106 360L134 360L140 318L146 292Z',
+    seam:'M106 360L134 360',
+    impale:[98,340,158,366],
     anchorX:133, anchorY:404, stubAnchorY:340,
   },
   leftLeg: {
-    path:'M172 292L180 378L176 436Q192 440 192 452L192 462L154 462L156 436L158 378L152 292Z',
-    stubPath:'M172 292L176 372L156 372L152 292Z',
-    seam:'M156 372H176',
-    impale:[150,362,200,344],
+    path:'M178 286C188 292 192 304 192 318L196 370C196 380 191 386 185 386L187 436C187 448 191 455 183 458C175 461 168 453 168 443L166 386C160 382 158 374 158 364L154 292Z',
+    stubPath:'M178 286C188 292 192 304 192 318L194 360L166 360L160 318L154 292Z',
+    seam:'M194 360L166 360',
+    impale:[202,340,142,366],
     anchorX:167, anchorY:404, stubAnchorY:340,
   },
 };
@@ -119,6 +126,15 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   readonly storage=inject(AppStorageService);
   private readonly router=inject(Router);
   private readonly specialEffects=inject(SpecialEffectsService);
+  private readonly weapons=inject(WeaponService);
+  readonly weaponCatalog:Weapon[]=this.weapons.getWeapons();
+  readonly armourPresets=ARMOUR_PRESETS;
+  readonly toolsCatalog=(ToolsShop as {item:string;enc:string;cost:string}[]);
+  picker:'weapon'|'armour'|'item'|'spell'|null=null;
+  pickerQuery='';
+  weaponStyleOnly=false;
+  armourLocation:HitLocation='chest';
+  spellTradition:'folk'|'sorcery'|'miracles'|null=null;
   private saveHandle?:DebouncedSaveHandle;
   character!:CompanionCharacter;
   readonly characteristics=CHARACTERISTICS;
@@ -169,8 +185,9 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   /** Professional skills learned inside the sheet before the draft is applied. */
   readonly draftAddedSkills: Skill[]=[];
   newSkillName='';
-  readonly quickDamageAmounts=[1,2,3,5];
   addingEffect=false;
+  editingEffectId:string|null=null;
+  editingInjury:SheetEffect['injury']=undefined;
   effectName=''; effectDuration=''; effectDescription='';
   newModifiers:SheetModifier[]=[];
   editingEquipment=false;
@@ -210,7 +227,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   onEdit():void {this.saveHandle?.schedule();}
   @HostListener('window:beforeunload') @HostListener('window:pagehide')
   flush():void {this.saveHandle?.flush();}
-  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.addingEffect=false;this.fatigueTableOpen=false;}
+  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.cancelEffect();this.fatigueTableOpen=false;}
   save():void {if(this.character)this.storage.saveCharacter(this.character,'view-character');}
   editInBuilder(section?:BuilderSection,focus?:string):void {
     this.flush();if(this.storage.error)return;
@@ -359,13 +376,35 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   get effects():SheetEffect[] {return this.character.companion?.effects||[];}
   /** Previously saved gifts remain visible; new narrative effects use the regular effect editor. */
   get gifts(){return this.character.companion?.gifts||[];}
-  removeEffect(id:string):void {companionState(this.character).effects=this.effects.filter(x=>x.id!==id);}
+  removeEffect(id:string):void {
+    const effect=this.effects.find(entry=>entry.id===id);
+    if(effect?.injury){
+      const remaining=locationInjuries(this.character,effect.injury.location)
+        .filter(type=>type!==effect.injury!.type);
+      setLocationInjuries(this.character,effect.injury.location,remaining);
+    }
+    companionState(this.character).effects=this.effects.filter(x=>x.id!==id);
+  }
+  openEffectDialog(effect?:SheetEffect):void {
+    this.addingEffect=true;
+    this.editingEffectId=effect?.id??null;
+    this.editingInjury=effect?.injury?{...effect.injury}:undefined;
+    this.effectName=effect?.name??'';
+    this.effectDuration=effect?.duration??'';
+    this.effectDescription=effect?.description??'';
+    this.newModifiers=(effect?.modifiers??[]).map(modifier=>({...modifier}));
+  }
   addModifier():void {this.newModifiers.push({kind:'characteristic',key:'str',amount:1});}
   modifierOptions(kind:SheetModifier['kind']):{key:string;label:string;skillId?:string}[] {
     if(kind==='characteristic')return this.characteristicModifierOptions;
     if(kind==='attribute')return this.attributeModifierOptions;
     if(kind==='magic')return this.magicModifierOptions;
     return this.skillModifierOptions;
+  }
+  modifierLabel(mod:SheetModifier):string {
+    const kindLabel:Record<SheetModifier['kind'],string>={characteristic:'Характеристика',skill:'Навык',attribute:'Атрибут',magic:'Магия'};
+    const target=this.modifierOptions(mod.kind).find(option=>option.key===mod.key)?.label??mod.key;
+    return kindLabel[mod.kind]+': '+target+' '+(mod.amount>0?'+':'')+mod.amount;
   }
   trackModifierOption(_index:number,option:{key:string}):string{return option.key;}
   setModifierKind(mod:SheetModifier,kind:SheetModifier['kind']):void {
@@ -376,15 +415,59 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     const option=this.modifierOptions(mod.kind).find(entry=>entry.key===key);
     if(option?.skillId)mod.skillId=option.skillId;else delete mod.skillId;
   }
+  private newEffectId():string {
+    return (globalThis.crypto as Crypto|undefined)?.randomUUID?.()
+      ?? `${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  }
   applyEffect():void {
     if(!this.effectName.trim())return;
-    const effect:SheetEffect={id:Date.now().toString(),name:this.effectName.trim(),
+    const effect:SheetEffect={id:this.editingEffectId??this.newEffectId(),name:this.effectName.trim(),
       duration:this.effectDuration.trim(),description:this.effectDescription.trim(),
-      modifiers:this.newModifiers.map(x=>({...x,amount:Number(x.amount)||0}))};
-    companionState(this.character).effects=[...this.effects,effect];
+      modifiers:this.newModifiers.map(x=>({...x,amount:Number(x.amount)||0})),
+      ...(this.editingInjury?{injury:{...this.editingInjury}}:{})};
+    companionState(this.character).effects=this.editingEffectId
+      ? this.effects.map(entry=>entry.id===this.editingEffectId?effect:entry)
+      : [...this.effects,effect];
     this.cancelEffect();
   }
-  cancelEffect():void {this.addingEffect=false;this.effectName='';this.effectDuration='';this.effectDescription='';this.newModifiers=[];}
+  cancelEffect():void {
+    this.addingEffect=false;this.editingEffectId=null;this.editingInjury=undefined;
+    this.effectName='';this.effectDuration='';this.effectDescription='';this.newModifiers=[];
+  }
+  private injuryEffectName(location:HitLocation,type:string):string {
+    const names:Record<HitLocation,string>={head:'голова',chest:'грудь',abdoment:'живот',
+      rightArm:'правая рука',leftArm:'левая рука',rightLeg:'правая нога',leftLeg:'левая нога'};
+    const genitive:Record<HitLocation,string>={head:'головы',chest:'груди',abdoment:'живота',
+      rightArm:'правой руки',leftArm:'левой руки',rightLeg:'правой ноги',leftLeg:'левой ноги'};
+    const name=names[location];
+    switch(type){
+      case 'Отсечена':return 'Отсечённая '+name;
+      case 'Увечье':return 'Увечье '+genitive[location];
+      case 'Пронзена':return 'Пронзение: '+name;
+      case 'Кровотечение':return 'Кровотечение: '+name;
+      case 'Шрам':return 'Шрам: '+name;
+      default:return type+': '+name;
+    }
+  }
+  private injuryEffectDescription(type:string):string {
+    return type==='Увечье'
+      ? 'Жертва навсегда теряет 1 пункт очков здоровья в поражённой локации из-за некроза тканей.'
+      : '';
+  }
+  private openInjuryEffect(location:HitLocation,type:string):void {
+    let effect=this.effects.find(entry=>entry.injury?.location===location&&entry.injury?.type===type);
+    if(!effect){
+      effect={id:this.newEffectId(),name:this.injuryEffectName(location,type),
+        duration:type==='Кровотечение'?'До остановки кровотечения':'Постоянно',
+        description:this.injuryEffectDescription(type),modifiers:[],injury:{location,type}};
+      companionState(this.character).effects=[...this.effects,effect];
+    }
+    this.openEffectDialog(effect);
+  }
+  private removeInjuryEffect(location:HitLocation,type:string):void {
+    companionState(this.character).effects=this.effects
+      .filter(entry=>!(entry.injury?.location===location&&entry.injury?.type===type));
+  }
   setFatigue(value:string):void {this.character.fatigueLevel=value;}
   get currentFatigueRule(){return fatigueRule(this.character);}
   get canAct():boolean{return canAct(this.character);}
@@ -392,10 +475,13 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   maxHp(key:HitLocation):number {return maxLocationHp(this.character,key,this.upgrade?this.draftStats:{});}
   hp(key:HitLocation):number {return displayedLocationHp(this.character,key,this.upgrade?this.draftStats:{});}
   hpColour(key:HitLocation):string {
-    const max=this.maxHp(key),n=this.hp(key);const wound=severity(n,max);
-    if(wound==='major')return '#9c5e61';if(wound==='serious')return '#d18a70';
-    const t=Math.max(0,Math.min(1,n/max));
-    return 'rgb('+[0,1,2].map(i=>Math.round([211,172,104][i]*(1-t)+[235,223,197][i]*t)).join(',')+')';
+    const max=this.maxHp(key),n=this.hp(key);
+    const major=[86,32,28], serious=[154,64,44], healthy=[198,106,63];
+    const mix=(from:number[],to:number[],t:number)=>'rgb('+from.map((value,i)=>Math.round(value+(to[i]-value)*t)).join(',')+')';
+    if(max<=0)return mix(major,serious,.5);
+    // Continuous gradient: major at −max, serious at 0, clay at max.
+    if(n<=0)return mix(major,serious,Math.max(0,Math.min(1,(n+max)/max)));
+    return mix(serious,healthy,Math.max(0,Math.min(1,n/max)));
   }
   /** A wound changes the part itself: a severed part is drawn as the remaining
    * stub, a crushed one gets the hatch pattern, an impaled one a through-line. */
@@ -408,10 +494,29 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   injuryMark(key:HitLocation):boolean {return locationInjuries(this.character,key).length>0;}
   injuryText(key:HitLocation):string {return locationInjuries(this.character,key).join(', ');}
   hasInjury(type:string):boolean {return locationInjuries(this.character,this.selectedLocation).includes(type);}
+  injuryAvailable(type:string):boolean {
+    return type!=='Отсечена'||['leftArm','rightArm','leftLeg','rightLeg'].includes(this.selectedLocation);
+  }
   toggleInjury(type:string):void {
-    const current=locationInjuries(this.character,this.selectedLocation);
-    setLocationInjuries(this.character,this.selectedLocation,
-      current.includes(type)?current.filter(value=>value!==type):[...current,type]);
+    if(!this.injuryAvailable(type))return;
+    const location=this.selectedLocation;
+    const current=locationInjuries(this.character,location);
+    if(current.includes(type)){
+      setLocationInjuries(this.character,location,current.filter(value=>value!==type));
+      this.removeInjuryEffect(location,type);
+      return;
+    }
+    let next=[...current];
+    if((MAJOR_WOUND_TYPES as readonly string[]).includes(type)){
+      // Dismemberment, maim and impalement are mutually exclusive on one location.
+      for(const legacy of current.filter(value=>(MAJOR_WOUND_TYPES as readonly string[]).includes(value))){
+        this.removeInjuryEffect(location,legacy);
+      }
+      next=next.filter(value=>!(MAJOR_WOUND_TYPES as readonly string[]).includes(value));
+    }
+    next.push(type);
+    setLocationInjuries(this.character,location,next);
+    this.openInjuryEffect(location,type);
   }
   get selectedLabel():string {return hitLocationRule(this.selectedLocation).labelRu;}
   selectLocation(key:HitLocation):void {this.selectedLocation=key;}
@@ -425,13 +530,96 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     if(!this.hpAmountValid||this.upgrade)return;
     changeLocationHp(this.character,this.selectedLocation,direction*this.hpAmount);
   }
-  /** One tap for the damage values that come up most often at the table. */
-  damageBy(amount:number):void {
-    if(this.upgrade)return;
-    if(!Number.isSafeInteger(amount)||amount<1||amount>999)return;
-    changeLocationHp(this.character,this.selectedLocation,-amount);
-  }
   ap(loc:HitLocation):number|string {return this.character.equipment[loc]?.ap??0;}
+  // ---- In-sheet pickers: weapons, armour, items and spells -----------------
+  get pickerTitle():string {
+    if(this.picker==='weapon')return 'Добавить оружие';
+    if(this.picker==='armour')return 'Броня: '+hitLocationRule(this.armourLocation).labelRu;
+    if(this.picker==='item')return 'Добавить снаряжение';
+    if(this.picker==='spell')return this.spellTradition==='folk'?'Folk Magic · заклинание':
+      this.spellTradition==='sorcery'?'Sorcery · заклинание':'Theism · чудо';
+    return '';
+  }
+  closePicker():void {this.picker=null;this.pickerQuery='';}
+  openWeaponPicker():void {this.picker='weapon';this.pickerQuery='';}
+  private get styleWeaponTokens():string[] {
+    const styles=this.character?.skills?.combatstyles||[];
+    return [...new Set(styles.flatMap(style=>Object.values(style.weapons||{})
+      .flatMap(value=>String(value||'').split(','))
+      .map(value=>value.trim().toLowerCase())
+      .filter(value=>value.length>1)))]
+      .filter(value=>value!=='any'&&!value.startsWith('any '));
+  }
+  private weaponFitsStyle(weapon:Weapon):boolean {
+    const name=weapon.name.toLowerCase();
+    return this.styleWeaponTokens.some(token=>name.includes(token)||token.includes(name));
+  }
+  get filteredWeapons():Weapon[] {
+    const query=this.pickerQuery.trim().toLowerCase();
+    return this.weaponCatalog
+      .filter(weapon=>!query||weapon.name.toLowerCase().includes(query))
+      .filter(weapon=>!this.weaponStyleOnly||this.weaponFitsStyle(weapon))
+      .slice()
+      .sort((a,b)=>a.name.localeCompare(b.name));
+  }
+  addWeapon(weapon:Weapon):void {
+    const copy=Object.assign(new CharacterWeapon(weapon.name,{}),weapon,{equipped:false,quantity:1});
+    this.character.equipment.weapons.push(copy);
+    this.closePicker();
+  }
+  weaponPickerDamage(weapon:Weapon):string {
+    return weapon.damage||weapon.oneHanded||weapon.twoHanded||weapon.ranged||weapon.unarmed||'—';
+  }
+  openArmourPicker(location:HitLocation):void {
+    this.armourLocation=location;this.picker='armour';this.pickerQuery='';
+  }
+  get filteredArmourPresets():ArmourPreset[] {
+    const query=this.pickerQuery.trim().toLowerCase();
+    return this.armourPresets.filter(preset=>!query||
+      [preset.type,preset.construction,preset.material].join(' ').toLowerCase().includes(query));
+  }
+  chooseArmour(preset:ArmourPreset):void {
+    const equipment=this.character.equipment[this.armourLocation]
+      ?? (this.character.equipment[this.armourLocation]=new Equipment());
+    applyArmourPreset(equipment,preset.id);
+    equipment.equipped=true;
+    this.closePicker();
+  }
+  openItemPicker():void {this.picker='item';this.pickerQuery='';}
+  get filteredItems():{item:string;enc:string;cost:string}[] {
+    const query=this.pickerQuery.trim().toLowerCase();
+    return this.toolsCatalog.filter(entry=>!query||entry.item.toLowerCase().includes(query));
+  }
+  addItem(entry:{item:string;enc:string;cost:string}):void {
+    this.character.equipment.items.push({name:entry.item,description:'',quantity:1,ap:0,hp:0,
+      enc:Number(entry.enc)||0,cost:Number(entry.cost)||0} as Item);
+    this.closePicker();
+  }
+  openSpellPicker(tradition:'folk'|'sorcery'|'miracles'):void {
+    this.spellTradition=tradition;this.picker='spell';this.pickerQuery='';
+  }
+  private get spellCatalog():{name:string;tags?:string;description:string}[] {
+    if(this.spellTradition==='folk')return folkMagic;
+    if(this.spellTradition==='sorcery')return sorceryMagic;
+    return theismMagic;
+  }
+  private get knownSpells():Spell[] {
+    if(this.spellTradition==='folk')return this.character.magic.folk;
+    if(this.spellTradition==='sorcery')return this.character.magic.sorcery;
+    return this.character.magic.miracles;
+  }
+  get filteredSpells():{name:string;tags?:string;description:string}[] {
+    const query=this.pickerQuery.trim().toLowerCase();
+    const known=new Set(this.knownSpells.map(spell=>spell.name));
+    return this.spellCatalog.filter(spell=>!known.has(spell.name))
+      .filter(spell=>!query||spell.name.toLowerCase().includes(query)||
+        (spell.tags||'').toLowerCase().includes(query))
+      .sort((a,b)=>a.name.localeCompare(b.name));
+  }
+  addSpell(spell:{name:string;tags?:string;description:string}):void {
+    this.knownSpells.push({name:spell.name,tags:spell.tags||'',description:spell.description||''});
+    this.closePicker();
+  }
   onSvgKey(event:KeyboardEvent,loc:HitLocation):void {if(event.key==='Enter'||event.key===' '){event.preventDefault();this.selectLocation(loc);}}
 
   get allWeaponRows():Partial<CharacterWeapon>[]{return this.character.equipment.weapons||[];}
@@ -603,7 +791,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     this.discardUpgrade();
   }
   difficultyTarget(multiplier:number):number {return this.activeSkill?Math.ceil(this.skillValue(this.activeSkill)*multiplier):0;}
-  stopOverlay(event:MouseEvent):void {if(event.target===event.currentTarget){this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.fatigueTableOpen=false;}}
+  stopOverlay(event:MouseEvent):void {if(event.target===event.currentTarget){this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.cancelEffect();this.closePicker();this.fatigueTableOpen=false;}}
   // Getters return fresh grouping objects; stable keys retain the triggering
   // buttons so dialog focus restoration and keyboard navigation can work.
   trackGroup(_index:number,group:{name:string}):string{return group.name;}

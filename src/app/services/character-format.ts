@@ -77,25 +77,33 @@ export function hydrateCharacter(saved: unknown): Character {
     return character;
 }
 
-// Injuries are now a list per location: a location may be crushed and impaled at
-// the same time. Legacy saves hold one string, which becomes a one-item list.
-// Idempotent: arrays are left untouched.
+// Injuries are now a list per location: a location may have a physical trauma,
+// bleeding and a scar at the same time. Legacy saves hold one string, which
+// becomes a one-item list; the old "crushed" label became "maim".
+// Idempotent: arrays are left untouched apart from the legacy label.
 function migrateCompanionInjuries(character: Character): void {
     const injuries = (character as any).companion?.injuries;
     if (!record(injuries))
         return;
+    const normalize = (value: string) => value === 'Раздроблена' ? 'Увечье' : value;
     for (const key of Object.keys(injuries)) {
         const value: unknown = injuries[key];
         if (typeof value === 'string') {
             if (value)
-                injuries[key] = [value];
+                injuries[key] = [normalize(value)];
             else
                 delete injuries[key];
         }
         else if (!Array.isArray(value))
             delete injuries[key];
-        else if (!value.length)
-            delete injuries[key];
+        else {
+            const next = value.filter((entry): entry is string => typeof entry === 'string' && entry !== '')
+                .map(normalize);
+            if (next.length)
+                injuries[key] = [...new Set(next)];
+            else
+                delete injuries[key];
+        }
     }
 }
 

@@ -101,16 +101,16 @@ describe('Companion save migrations', () => {
     it('turns a legacy injury string into a list, idempotently', () => {
         const saved = { ...base(), companion: { injuries: { chest: 'Раздроблена', head: '' } } };
         const once = hydrateCharacter(JSON.parse(JSON.stringify(saved))) as any;
-        expect(once.companion.injuries.chest).toEqual(['Раздроблена']);
+        expect(once.companion.injuries.chest).toEqual(['Увечье']);
         expect(once.companion.injuries.head).toBeUndefined();
         const twice = hydrateCharacter(JSON.parse(JSON.stringify(once))) as any;
-        expect(twice.companion.injuries).toEqual({ chest: ['Раздроблена'] });
+        expect(twice.companion.injuries).toEqual({ chest: ['Увечье'] });
     });
 
     it('keeps several wound types on one location', () => {
         const saved = { ...base(), companion: { injuries: { chest: ['Раздроблена', 'Пронзена'] } } };
         const character = hydrateCharacter(JSON.parse(JSON.stringify(saved))) as any;
-        expect(character.companion.injuries.chest).toEqual(['Раздроблена', 'Пронзена']);
+        expect(character.companion.injuries.chest).toEqual(['Увечье', 'Пронзена']);
     });
 
     it('assigns a stable id only to skills whose names collide, and keeps it on round-trip', () => {

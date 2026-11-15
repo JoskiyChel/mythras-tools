@@ -46,13 +46,13 @@ describe('Companion permanent advancement', () => {
     expect(component.hasUpgrade).toBeFalse();
   });
   it('keeps permanent injuries visible after HP are healed, with several types per location', () => {
-    component.character.companion = {injuries: {chest: ['Раздроблена']}};
+    component.character.companion = {injuries: {chest: ['Увечье']}};
     component.character.currentHitPoints = {chest: 7};
     expect(component.injuryMark('chest')).toBeTrue();
     expect(component.injuryMark('head')).toBeFalse();
-    component.character.companion = {injuries: {chest: ['Раздроблена','Пронзена']}};
-    expect(component.injuryText('chest')).toBe('Раздроблена, Пронзена');
-    expect(component.hasWoundType('chest','Раздроблена')).toBeTrue();
+    component.character.companion = {injuries: {chest: ['Увечье','Кровотечение']}};
+    expect(component.injuryText('chest')).toBe('Увечье, Кровотечение');
+    expect(component.hasWoundType('chest','Увечье')).toBeTrue();
     expect(component.hasWoundType('chest','Отсечена')).toBeFalse();
     const arm=component.locations.find(location=>location.key==='leftArm')!;
     expect(component.partPath(arm)).toBe(arm.path);
@@ -62,6 +62,38 @@ describe('Companion permanent advancement', () => {
     component.character.companion = {};
     component.character.currentHitPoints = {chest: -5};
     expect(component.injuryMark('chest')).toBeFalse();
+  });
+
+  it('makes physical traumas exclusive, links them to effects and removes both sides', () => {
+    component.character.companion = {};
+    component.selectLocation('leftArm');
+    const baseMax = component.maxHp('leftArm');
+    component.toggleInjury('Увечье');
+    expect(component.injuryText('leftArm')).toBe('Увечье');
+    expect(component.maxHp('leftArm')).toBe(baseMax - 1);
+    const maim = component.effects.find(effect => effect.injury?.type === 'Увечье')!;
+    expect(maim.name).toBe('Увечье левой руки');
+    expect(maim.description).toContain('навсегда теряет 1 пункт');
+    expect(component.addingEffect).toBeTrue();
+    component.cancelEffect();
+    expect(component.effects).toContain(maim);
+
+    component.toggleInjury('Отсечена');
+    expect(component.injuryText('leftArm')).toBe('Отсечена');
+    expect(component.effects.some(effect => effect.injury?.type === 'Увечье')).toBeFalse();
+    const severed = component.effects.find(effect => effect.injury?.type === 'Отсечена')!;
+    expect(severed.name).toBe('Отсечённая левая рука');
+    component.cancelEffect();
+
+    component.removeEffect(severed.id);
+    expect(component.injuryText('leftArm')).toBe('');
+  });
+
+  it('shows effect modifiers with the same labels as the editor', () => {
+    expect(component.modifierLabel({kind:'characteristic',key:'str',amount:1}))
+      .toBe('Характеристика: STR +1');
+    expect(component.modifierLabel({kind:'magic',key:'theism.poolMax',amount:2}))
+      .toBe('Магия: Theism · максимум Devotion Pool +2');
   });
 
   it('retains skill and magic buttons across change detection for focus restoration', () => {
@@ -151,15 +183,34 @@ describe('Companion permanent advancement', () => {
     expect(component.upgrade).toBeFalse();
   });
 
-  it('deals quick damage to the selected location and blocks it during a draft', () => {
-    component.character.currentHitPoints = {chest: 7};
-    component.selectLocation('chest');
-    const before = component.hp('chest');
-    component.damageBy(3);
-    expect(component.hp('chest')).toBe(before - 3);
-    component.beginUpgrade();
-    component.damageBy(3);
-    expect(component.hp('chest')).toBe(before - 3);
+  it('adds weapons, armour, items and spells from the sheet', () => {
+    const dagger = component.weaponCatalog.find(weapon => weapon.name === 'Dagger')!;
+    component.addWeapon(dagger);
+    expect(component.character.equipment.weapons.some(weapon => weapon.name === 'Dagger')).toBeTrue();
+
+    component.openArmourPicker('chest');
+    const linothorax = component.armourPresets.find(preset => preset.type === 'Linothorax')!;
+    component.chooseArmour(linothorax);
+    expect(component.character.equipment.chest.type).toBe('Linothorax');
+    expect(component.ap('chest')).toBe(3);
+
+    component.openItemPicker();
+    component.addItem({item:'Backpack', enc:'1', cost:'5'});
+    expect(component.character.equipment.items.some(item => item.name === 'Backpack')).toBeTrue();
+
+    component.openSpellPicker('folk');
+    component.addSpell({name:'Avert', tags:'Instant', description:'Dismiss a spell.'});
+    expect(component.character.magic.folk.some(spell => spell.name === 'Avert')).toBeTrue();
+  });
+
+  it('filters the weapon picker by the character combat styles', () => {
+    component.character.skills.combatstyles = [new CombatStyle('Hoplite', {
+      culture: 'Greek', weapons: { Melee: 'Spear, Xiphos' },
+    })];
+    component.weaponStyleOnly = true;
+    const names = component.filteredWeapons.map(weapon => weapon.name);
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.every(name => /spear|xiphos/i.test(name))).toBeTrue();
   });
 
   it('carries the current Character into a specific constructor step', () => {

@@ -1,30 +1,30 @@
-/* Agora UI kit: limestone, ink and bronze. Screen UI only; PDF geometry is independent. */
+/* Direction A: red-figure pottery. Black glaze, terracotta clay, bronze. */
 :root {
-  --ui-canvas: #f5f3ee;
-  --ui-surface: #fffdf9;
-  --ui-raised: #eeeae1;
-  --ui-ink: #292c27;
-  --ui-secondary: #51574f;
-  --ui-muted: #656b61;
-  --ui-border: #d7d4c9;
-  --ui-accent: #78452f;
-  --ui-accent-hover: #593421;
-  --ui-accent-soft: #f0e5da;
-  --ui-olive: #4e5d45;
-  --ui-olive-soft: #e9ede4;
-  --ui-on-dark: #fffdf9;
-  --ui-danger: #963e36;
-  --ui-danger-soft: #f7e9e5;
-  --ui-success: #326345;
-  --ui-success-soft: #e6efe7;
-  --ui-warning: #795521;
-  --ui-warning-soft: #f6efdf;
-  --ui-focus: #78452f;
+  --ui-canvas: #17110d;
+  --ui-surface: #1f1813;
+  --ui-raised: #2a1e16;
+  --ui-ink: #f0dfc2;
+  --ui-secondary: #cdb490;
+  --ui-muted: #a88b66;
+  --ui-border: #3d2c21;
+  --ui-accent: #c86a3e;
+  --ui-accent-hover: #d97a4b;
+  --ui-accent-soft: #332015;
+  --ui-olive: #e8d2ae;
+  --ui-olive-soft: #2e2118;
+  --ui-on-dark: #1a120d;
+  --ui-danger: #e0785a;
+  --ui-danger-soft: #3a1d16;
+  --ui-success: #8fae86;
+  --ui-success-soft: #223027;
+  --ui-warning: #d9a05b;
+  --ui-warning-soft: #33261a;
+  --ui-focus: #d9a05b;
   --ui-font: Roboto, 'Helvetica Neue', sans-serif;
   --ui-display: 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
-  --ui-radius-control: 6px;
-  --ui-radius-panel: 12px;
-  --ui-shadow: 0 1px 3px rgb(41 44 39 / 5%);
+  --ui-radius-control: 4px;
+  --ui-radius-panel: 8px;
+  --ui-shadow: 0 1px 3px rgb(0 0 0 / 35%);
   --ui-motion: 160ms cubic-bezier(.22, 1, .36, 1);
 
   --app-color-bg: var(--ui-canvas);

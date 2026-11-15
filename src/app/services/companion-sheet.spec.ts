@@ -299,9 +299,9 @@ describe('Companion sheet / Mythras check and magic formulas', () => {
 
   it('stores several wound types per location and reads a legacy single string (ТЗ §5.4)', () => {
     const c=character();
-    setLocationInjuries(c,'chest',['Раздроблена']);
-    setLocationInjuries(c,'chest',['Раздроблена','Пронзена']);
-    expect(locationInjuries(c,'chest')).toEqual(['Раздроблена','Пронзена']);
+    setLocationInjuries(c,'chest',['Увечье']);
+    setLocationInjuries(c,'chest',['Увечье','Пронзена']);
+    expect(locationInjuries(c,'chest')).toEqual(['Увечье','Пронзена']);
     expect(locationInjuries(c,'head')).toEqual([]);
     (c.companion as any).injuries={head:'Отсечена'};
     expect(locationInjuries(c,'head')).toEqual(['Отсечена']);
