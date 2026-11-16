@@ -239,14 +239,18 @@
                 <span>AP: {{currentFatigueRule.actionPoints===null?'—':currentFatigueRule.actionPoints}}</span>
               </div>
             </div>
-            <div class="effect-row" *ngFor="let effect of effects" [class.is-injury]="!!effect.injury">
+            <div class="effect-row" *ngFor="let effect of effects" [class.is-injury]="!!effect.injury"
+              role="button" tabindex="0" (click)="openEffectDialog(effect)"
+              (keydown.enter)="openEffectDialog(effect)"
+              (keydown.space)="openEffectDialog(effect); $event.preventDefault()"
+              [attr.aria-label]="'Открыть эффект ' + effect.name">
               <div><strong>{{effect.name}}</strong><small *ngIf="effect.duration">Длительность: {{effect.duration}}</small>
                 <p class="effect-description" *ngIf="effect.description">{{effect.description}}</p>
                 <small class="effect-modifier" *ngFor="let mod of effect.modifiers">{{modifierLabel(mod)}}</small>
               </div>
               <span class="effect-actions">
-                <button type="button" (click)="openEffectDialog(effect)" [attr.aria-label]="'Изменить эффект ' + effect.name">✎</button>
-                <button type="button" (click)="removeEffect(effect.id)" [attr.aria-label]="'Снять эффект ' + effect.name">×</button>
+                <button type="button" (click)="$event.stopPropagation(); openEffectDialog(effect)" [attr.aria-label]="'Изменить эффект ' + effect.name">✎</button>
+                <button type="button" (click)="$event.stopPropagation(); removeEffect(effect.id)" [attr.aria-label]="'Снять эффект ' + effect.name">×</button>
               </span>
             </div>
             <div class="effect-row old-gift" *ngFor="let gift of gifts">
@@ -509,7 +513,7 @@
       <label class="field-label">Название<input placeholder="Название эффекта" [(ngModel)]="effectName" aria-label="Название эффекта"></label>
       <label class="field-label">Длительность<input placeholder="Время действия, 'постоянно' или пусто" [(ngModel)]="effectDuration" aria-label="Длительность эффекта"></label>
       <label class="field-label">Описание действия
-        <textarea rows="3" [(ngModel)]="effectDescription" placeholder="Нарративный эффект, статус или дополнительные правила…" aria-label="Описание эффекта"></textarea>
+        <textarea rows="5" [(ngModel)]="effectDescription" placeholder="Нарративный эффект, статус или дополнительные правила…" aria-label="Описание эффекта"></textarea>
       </label>
       <div class="effect-modifier-heading">Модификаторы <span>(необязательно)</span></div>
       <div class="modifier-row" *ngFor="let mod of newModifiers;let i=index">

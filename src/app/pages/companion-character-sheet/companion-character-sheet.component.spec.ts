@@ -65,6 +65,20 @@ describe('Companion permanent advancement', () => {
     expect(component.injuryMark('chest')).toBeFalse();
   });
 
+  it('opens an existing effect with its full description for editing', () => {
+    const description = 'Длинное описание эффекта. '.repeat(20).trim();
+    const effect = {
+      id: 'long-effect', name: 'Длинный эффект', duration: 'До конца сцены',
+      description, modifiers: [{kind: 'skill' as const, key: 'brawn', amount: 10}],
+    };
+    component.openEffectDialog(effect);
+    expect(component.addingEffect).toBeTrue();
+    expect(component.editingEffectId).toBe('long-effect');
+    expect(component.effectName).toBe('Длинный эффект');
+    expect(component.effectDescription).toBe(description);
+    expect(component.newModifiers).toEqual([{kind: 'skill', key: 'brawn', amount: 10}]);
+  });
+
   it('makes physical traumas exclusive, links them to effects and removes both sides', () => {
     component.character.companion = {};
     component.selectLocation('leftArm');
