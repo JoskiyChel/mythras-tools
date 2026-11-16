@@ -539,6 +539,17 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
 .history-controls { display:inline-flex; align-items:center; gap:2px; }
 .history-controls button { min-width:30px; justify-content:center; padding:4px 7px; font-size:16px; line-height:1; }
 .history-controls button:disabled { opacity:.35; }
+.history-dialog { width:min(100%,620px); }
+.change-log { list-style:none; margin:0; padding:0; border:1px solid var(--ui-border); border-radius:8px; overflow:hidden; }
+.change-log li { display:grid; grid-template-columns:24px minmax(0,1fr) auto auto; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--ui-border); font-size:13px; color:var(--ui-olive); }
+.change-log li:last-child { border-bottom:0; }
+.change-log li.undone { color:var(--ui-muted); }
+.change-log li.undone .change-label { text-decoration:line-through; }
+.change-index { color:var(--ui-muted); font-size:11px; text-align:right; }
+.change-log time { color:var(--ui-muted); font-size:11px; white-space:nowrap; }
+.change-log small { color:var(--ui-danger); font-size:11px; }
+.history-actions { margin-top:12px; flex-wrap:wrap; }
+.history-actions button { flex:1 1 auto; }
 
 /* Skill check: select a grade, then resolve a virtual or physical d100. */
 .skill-check-dialog { width:min(100%,760px); }

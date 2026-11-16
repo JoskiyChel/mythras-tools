@@ -37,10 +37,12 @@ import {
 } from '../../services/companion-sheet';
 import { DiceRollResult, resultFromValues, rollDice } from '../../services/dice';
 import { SkillCheckResult, resolveSkillCheck } from '../../services/skill-check';
+import { describeCharacterChange } from '../../services/sheet-history';
 
 interface SheetInfo { title:string; source?:string; sections:{label:string;paragraphs:string[]}[]; }
 interface CheckHistoryEntry { skill:string; difficulty:string; roll:number; label:string; outcome:string; }
 interface DiceHistoryEntry { expression:string; total:number; mode:'virtual'|'manual'; }
+interface ChangeHistoryEntry { snapshot:string; label:string; time:number; }
 
 type SheetTab = 'weapons'|'magic'|'armour'|'equipment'|'notes';
 /** Geometry of one part of the anatomical plate. `path` is the whole part,
@@ -148,11 +150,12 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   spellTradition:'folk'|'sorcery'|'miracles'|null=null;
   private saveHandle?:DebouncedSaveHandle;
   /** Session-only character snapshots. Never persisted in the character JSON. */
-  private readonly historyPast:string[]=[];
-  private readonly historyFuture:string[]=[];
+  private readonly historyPast:ChangeHistoryEntry[]=[];
+  private readonly historyFuture:ChangeHistoryEntry[]=[];
   private historySnapshot='';
   private restoringHistory=false;
   private readonly historyLimit=30;
+  historyOpen=false;
   character!:CompanionCharacter;
   readonly characteristics=CHARACTERISTICS;
   readonly fatigueLevels=FATIGUE;
@@ -248,7 +251,11 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
       return;
     }
     if(snapshot===this.historySnapshot)return;
-    this.historyPast.push(this.historySnapshot);
+    this.historyPast.push({
+      snapshot:this.historySnapshot,
+      label:describeCharacterChange(this.historySnapshot,snapshot),
+      time:Date.now(),
+    });
     if(this.historyPast.length>this.historyLimit)this.historyPast.splice(0,this.historyPast.length-this.historyLimit);
     this.historyFuture.length=0;
     this.historySnapshot=snapshot;
@@ -281,21 +288,27 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   }
   get canUndo():boolean {return !this.upgrade&&this.historyPast.length>0;}
   get canRedo():boolean {return !this.upgrade&&this.historyFuture.length>0;}
+  get historyEntries():{label:string;time:number;undone:boolean}[] {
+    return [
+      ...this.historyPast.map(entry=>({label:entry.label,time:entry.time,undone:false})),
+      ...[...this.historyFuture].reverse().map(entry=>({label:entry.label,time:entry.time,undone:true})),
+    ];
+  }
+  get lastHistoryLabel():string {return this.historyPast[this.historyPast.length-1]?.label ?? '';}
   undoChange():void {this.restoreHistory(false);}
   redoChange():void {this.restoreHistory(true);}
   private restoreHistory(redo:boolean):void {
     if(this.upgrade)return;
     const from=redo?this.historyFuture:this.historyPast;
     const to=redo?this.historyPast:this.historyFuture;
-    const snapshot=from.pop();
-    if(snapshot===undefined)return;
-    const current=JSON.stringify(this.character);
-    to.push(current);
+    const entry=from.pop();
+    if(!entry)return;
+    to.push({snapshot:JSON.stringify(this.character),label:entry.label,time:entry.time});
     if(to.length>this.historyLimit)to.splice(0,to.length-this.historyLimit);
     this.restoringHistory=true;
     try{
-      this.character=JSON.parse(snapshot) as CompanionCharacter;
-      this.historySnapshot=snapshot;
+      this.character=JSON.parse(entry.snapshot) as CompanionCharacter;
+      this.historySnapshot=entry.snapshot;
       this.refreshSkillModifierOptions();
       this.saveHandle?.schedule();
     }finally{
@@ -306,7 +319,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   onEdit():void {this.saveHandle?.schedule();}
   @HostListener('window:beforeunload') @HostListener('window:pagehide')
   flush():void {this.saveHandle?.flush();}
-  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.diceDialog=false;this.cancelEffect();this.fatigueTableOpen=false;}
+  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.diceDialog=false;this.historyOpen=false;this.cancelEffect();this.fatigueTableOpen=false;}
   save():void {if(this.character)this.storage.saveCharacter(this.character,'view-character');}
   editInBuilder(section?:BuilderSection,focus?:string):void {
     this.flush();if(this.storage.error)return;

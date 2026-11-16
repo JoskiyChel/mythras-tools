@@ -3,8 +3,9 @@
     <div class="masthead-brand">Mythras <small>Companion</small></div>
     <div class="masthead-tools">
       <span class="history-controls" role="group" aria-label="История изменений">
-        <button type="button" (click)="undoChange()" [disabled]="!canUndo" title="Отменить последнее изменение" aria-label="Отменить последнее изменение">↶</button>
+        <button type="button" (click)="undoChange()" [disabled]="!canUndo" [title]="canUndo ? 'Отменить: ' + lastHistoryLabel : 'Отменять нечего'" aria-label="Отменить последнее изменение">↶</button>
         <button type="button" (click)="redoChange()" [disabled]="!canRedo" title="Повторить отменённое изменение" aria-label="Повторить отменённое изменение">↷</button>
+        <button type="button" (click)="historyOpen=true" title="Журнал изменений" aria-label="Открыть журнал изменений">⏱</button>
       </span>
       <button class="skills-toggle" type="button" (click)="skillsOpen=!skillsOpen" [attr.aria-expanded]="skillsOpen" aria-controls="companion-skills">Навыки</button>
       <a routerLink="/menu">Библиотека</a>
@@ -543,6 +544,30 @@
           </li>
         </ol>
       </section>
+    </div>
+  </div>
+</div>
+
+<!-- Session change log: labels are generated from the character diff, never saved. -->
+<div class="overlay" *ngIf="historyOpen" (mousedown)="stopOverlay($event)">
+  <div class="dialog history-dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-labelledby="history-dialog-title">
+    <header><div><small>Только в этом сеансе</small><h2 id="history-dialog-title">Журнал изменений</h2></div><button type="button" (click)="historyOpen=false" aria-label="Закрыть">×</button></header>
+    <div class="dialog-body">
+      <p class="minor-note">История не записывается в JSON персонажа. Отменяйте и повторяйте изменения стрелками в шапке.</p>
+      <p class="empty-state" *ngIf="!historyEntries.length">Пока нет изменений.</p>
+      <ol class="change-log" *ngIf="historyEntries.length">
+        <li *ngFor="let entry of historyEntries; let i = index" [class.undone]="entry.undone">
+          <span class="change-index">{{i + 1}}</span>
+          <span class="change-label">{{entry.label}}</span>
+          <small *ngIf="entry.undone">отменено</small>
+          <time>{{entry.time | date:'HH:mm:ss'}}</time>
+        </li>
+      </ol>
+      <div class="flexline history-actions">
+        <button class="quiet compact" type="button" (click)="undoChange()" [disabled]="!canUndo">↶ Отменить</button>
+        <button class="quiet compact" type="button" (click)="redoChange()" [disabled]="!canRedo">↷ Повторить</button>
+        <button class="primary compact" type="button" (click)="historyOpen=false">Закрыть</button>
+      </div>
     </div>
   </div>
 </div>
