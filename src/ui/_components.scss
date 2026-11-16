@@ -1,7 +1,12 @@
 /* Shared Agora components. Semantic selectors serve all Angular feature pages. */
 @media screen {
-  html { color-scheme: light; background: var(--ui-canvas); }
+  html { color-scheme: dark; background: var(--ui-canvas); }
   body { background: var(--ui-canvas); color: var(--ui-ink); }
+  a { color: var(--ui-accent-hover); }
+  a:hover { color: var(--ui-hover-ink); }
+  ::placeholder { color: var(--ui-muted); opacity: 1; }
+  select, option { color-scheme: dark; }
+  option { background: var(--ui-surface); color: var(--ui-ink); }
   .app-shell { background: var(--ui-canvas); }
   .app-container { max-width: 1440px; padding: 32px; }
   .app-card-surface, .mat-mdc-card, .mat-expansion-panel {
@@ -40,6 +45,9 @@
   .mat-mdc-select-panel, .mat-mdc-menu-panel, .mat-mdc-dialog-container .mdc-dialog__surface {
     background: var(--ui-surface); color: var(--ui-ink);
   }
+  .mat-mdc-option { color: var(--ui-ink); }
+  .mat-mdc-option:hover, .mat-mdc-option.mat-mdc-option-active,
+  .mat-mdc-option.mdc-list-item--selected { background: var(--ui-hover); color: var(--ui-hover-ink); }
   .info-modal-title { font-family: var(--ui-display) !important; font-size: 28px !important; color: var(--ui-ink); }
   .info-modal-content, .info-modal-content p, .info-modal-content li { color: var(--ui-ink); line-height: 1.65; }
   .info-modal-actions { background: var(--ui-canvas); border-color: var(--ui-border); }
@@ -52,7 +60,8 @@
   }
   .table th, .mat-mdc-header-cell { background: var(--ui-raised); color: var(--ui-secondary); font-weight: 500; }
   .table td, .mat-mdc-cell { color: var(--ui-ink); border-color: var(--ui-border); }
-  .table tbody tr:hover, .mat-mdc-row:hover { background: var(--ui-canvas); }
+  .table tbody tr:hover, .mat-mdc-row:hover { background: var(--ui-hover); color: var(--ui-hover-ink); }
+  .table tbody tr:hover td, .mat-mdc-row:hover .mat-mdc-cell { color: var(--ui-hover-ink); }
   .table [aria-selected='true'], .mat-mdc-row.selected { background: var(--ui-olive-soft); }
   :where(.mat-mdc-cell, .app-table td, .skill-score, .allocation-summary, .step-index) { font-variant-numeric: tabular-nums; }
   .save-status { font-size: 12px; color: var(--ui-muted); }

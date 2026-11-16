@@ -3,6 +3,8 @@
   --ui-canvas: #17110d;
   --ui-surface: #1f1813;
   --ui-raised: #2a1e16;
+  --ui-hover: #3a281d;
+  --ui-hover-ink: #f6e7cd;
   --ui-ink: #f0dfc2;
   --ui-secondary: #cdb490;
   --ui-muted: #a88b66;
@@ -40,7 +42,7 @@
   --app-space-1: 4px; --app-space-2: 8px; --app-space-3: 12px;
   --app-space-4: 16px; --app-space-5: 24px; --app-space-6: 32px; --app-space-7: 48px;
   --app-radius-sm: 4px; --app-radius-md: 8px; --app-radius-lg: 12px;
-  --app-shadow-sm: var(--ui-shadow); --app-shadow-md: 0 8px 24px rgb(41 44 39 / 8%);
+  --app-shadow-sm: var(--ui-shadow); --app-shadow-md: 0 8px 24px rgb(0 0 0 / 45%);
   --app-font-size-xs: 12px; --app-font-size-sm: 14px; --app-font-size-md: 16px;
   --app-font-size-lg: 20px; --app-font-size-xl: 28px; --app-font-size-2xl: 32px;
 }

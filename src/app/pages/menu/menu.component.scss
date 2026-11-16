@@ -6,7 +6,7 @@
 .brand-mark { width:48px; height:48px; }
 .header-links { display:flex; flex-wrap:wrap; gap:24px; }
 .header-links a { color:var(--ui-secondary); text-decoration:none; padding:8px 0; font-size:14px; }
-.header-links a:hover { color:var(--ui-accent); }
+.header-links a:hover { color:var(--ui-hover-ink); }
 .fork-notice { font-size:12px; line-height:1.7; color:var(--ui-muted); max-width:960px; }
 .fork-notice a { color:var(--ui-accent); }
 .hero { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr); gap:64px; align-items:center; padding:32px 0 48px; }
@@ -54,8 +54,9 @@
 .card-more summary { cursor:pointer; padding:8px 0; }
 .card-tools { display:grid; gap:4px; margin-top:8px; }
 .card-tools button { background:none; border:0; text-align:left; cursor:pointer; padding:8px; color:var(--ui-accent); min-height:36px; border-radius:var(--ui-radius-control); }
-.card-tools button:hover { background:var(--ui-raised); }
+.card-tools button:hover { background:var(--ui-hover); color:var(--ui-hover-ink); }
 .card-tools .delete { color:var(--ui-danger); }
+.card-tools .delete:hover { color:var(--ui-danger); }
 .empty-state { padding:32px 24px; text-align:left; border:1px dashed var(--ui-border); border-radius:var(--ui-radius-panel); }
 .empty-state>mat-icon { display:none; }
 .empty-state h3 { font:400 24px/1.2 var(--ui-display); color:var(--ui-ink); }

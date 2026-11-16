@@ -8,7 +8,7 @@ import { HIT_LOCATION_ORDER } from './hit-locations';
  * Character object stays the canonical source of characteristics, equipment and magic. */
 export type CharacteristicKey = 'str'|'con'|'siz'|'dex'|'int'|'pow'|'cha';
 export type AttributeKey = 'ap'|'healing'|'init'|'luck'|'expMod'|'damage'|'movement'|'magicPoints';
-export type ModifierTarget = 'characteristic'|'skill'|'attribute'|'magic';
+export type ModifierTarget = 'characteristic'|'skill'|'attribute'|'magic'|'locationHp';
 /** Magic discipline statistics addressable by an effect (see design/COMPANION-OPEN-QUESTIONS.md). */
 export type MagicStatKey = 'theism.poolMax'|'theism.intensity'|'animism.maxSpiritPOW'|'mysticism.totalIntensity'|'sorcery.shapingPoints';
 export interface SheetModifier {
@@ -184,8 +184,12 @@ export function magicPointMaximum(character: CompanionCharacter,
 export function maxLocationHp(character: CompanionCharacter, location: HitLocation,
   tentative: Partial<Record<CharacteristicKey,number>> = {}): number {
   const base=getMaximumHp(calculationCharacter(character,tentative),location);
-  // Maim: the victim permanently loses 1 HP in the affected location.
-  return Math.max(0, base - (locationInjuries(character,location).includes('Увечье') ? 1 : 0));
+  const explicit=modifierTotal(character,'locationHp',location);
+  const hasExplicit=(character.companion?.effects||[]).some(effect =>
+    (effect.modifiers||[]).some(modifier => modifier.kind==='locationHp' && modifier.key===location));
+  // Legacy maims may predate the explicit modifier; keep their permanent −1.
+  const fallback=!hasExplicit&&locationInjuries(character,location).includes('Увечье') ? -1 : 0;
+  return Math.max(0, base + explicit + fallback);
 }
 
 /** Initialises a new/pristine character once, without touching wounds in any

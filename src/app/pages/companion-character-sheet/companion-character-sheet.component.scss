@@ -438,6 +438,51 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
 .body-hair { fill:#2a150d; stroke:none; }
 .overlay { background:rgb(10 7 5 / .74); }
 .injury-chip:disabled { opacity:.28; cursor:not-allowed; }
-.effect-row small { color:var(--ui-secondary); }
-.wound-impale line { stroke:#24120b; stroke-width:4; }
+
+/* Readability pass: hover states must never put dark ink on a dark surface. */
+.masthead-tools button:hover, .masthead-tools a:hover {
+  background:var(--ui-hover-ink); border-color:var(--ui-hover-ink); color:var(--ui-on-dark);
+}
+.skill-name:hover, .percent:hover {
+  color:var(--ui-hover-ink); background:var(--ui-hover);
+}
+.tab-strip button:hover { background:var(--ui-hover); color:var(--ui-hover-ink); }
+.location-row:hover { background:var(--ui-hover); }
+.location-row:hover .loc-name, .location-row:hover .loc-hp,
+.location-row:hover .loc-roll, .location-row:hover .loc-ap { color:var(--ui-hover-ink); }
+.location-row.selected .loc-name, .location-row.selected .loc-hp { color:var(--ui-olive); }
+.picker-list button:hover { background:var(--ui-hover); }
+.picker-list button:hover span { color:var(--ui-hover-ink); }
+.picker-list button:hover small { color:var(--ui-secondary); }
+.effect-actions button:hover { color:var(--ui-hover-ink); background:var(--ui-hover); border-radius:4px; }
+.rule-link:hover, .style-skill:hover { color:var(--ui-hover-ink); }
+
+/* Effects: raised clay cards with a bronze rule, readable in the dark theme. */
+.effect-row {
+  background:linear-gradient(180deg,#2b1e16,#211610); border:1px solid #5d3a26;
+  border-left:3px solid var(--ui-accent); color:var(--ui-ink);
+}
+.effect-row.is-injury { border-left-color:var(--ui-danger); }
+.effect-row strong { color:#f6e7cd; font-size:13px; }
+.effect-row small, .effect-row .effect-description { color:#e0c7a2; }
+.effect-row .effect-description { margin:4px 0 0; line-height:1.45; }
+.effect-modifier {
+  display:inline-block; width:fit-content; margin:4px 4px 0 0; padding:1px 5px; border-radius:3px;
+  background:#3a2418; border:1px solid #6b3f27; color:#f6e7cd !important; font-size:11px;
+}
+.effect-row .effect-modifier { display:inline-block; width:fit-content; }
+.effect-row .effect-actions button { color:#cdb490; }
+.effect-row .effect-actions button:hover { color:var(--ui-hover-ink); background:var(--ui-hover); }
+.effect-dialog .field-label, .effect-dialog .effect-modifier-heading { color:var(--ui-ink); }
+.effect-dialog .field-label { display:block; margin:8px 0 4px; font-weight:600; }
+.effect-dialog input, .effect-dialog textarea, .effect-dialog select {
+  background:var(--ui-canvas); color:var(--ui-ink); border-color:var(--ui-border); padding:8px;
+}
+.effect-dialog input::placeholder, .effect-dialog textarea::placeholder { color:#bfa47e; opacity:1; }
+.effect-dialog .minor-note { color:var(--ui-secondary); }
+
+.wound-impale line { stroke:#f0dfc2; stroke-width:3.2; filter:drop-shadow(0 0 1px #120d0a); }
 .wound-impale circle { fill:#d9a05b; stroke:#24120b; stroke-width:1.2; }
+.wound-impale .impale-wound { fill:#7a2418; stroke:#e0785a; stroke-width:.9; }
+.wound-bleed path { fill:#e0785a; stroke:#2a120c; stroke-width:.8; }
+.wound-bleed .bleed-cut { fill:none; stroke:#e0785a; stroke-width:1.4; stroke-linecap:round; }

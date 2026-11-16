@@ -92,10 +92,16 @@
                 </linearGradient>
                 <filter id="maimEdge" x="-12%" y="-12%" width="124%" height="124%">
                   <feTurbulence type="fractalNoise" baseFrequency="0.11" numOctaves="2" seed="7" result="noise"/>
-                  <feDisplacementMap in="SourceGraphic" in2="noise" scale="5.5" xChannelSelector="R" yChannelSelector="G"/>
+                  <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G"/>
                 </filter>
-                <marker id="arrowHead" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
-                  <path d="M0 0L12 6L0 12L3 6Z" fill="#d9a05b" stroke="#120d0a" stroke-width=".7"/>
+                <marker id="arrowHead" viewBox="0 0 9 9" refX="9" refY="4.5" markerWidth="9" markerHeight="9"
+                  markerUnits="userSpaceOnUse" orient="auto">
+                  <path d="M0 0L9 4.5L0 9L2.5 4.5Z" fill="#d9a05b" stroke="#120d0a" stroke-width=".6"/>
+                </marker>
+                <marker id="arrowFletch" viewBox="0 0 12 12" refX="12" refY="6" markerWidth="12" markerHeight="12"
+                  markerUnits="userSpaceOnUse" orient="auto">
+                  <path d="M12 6L3 1M12 6L3 11M12 6L7 6" fill="none" stroke="#d9a05b"
+                    stroke-width="1.4" stroke-linecap="round"/>
                 </marker>
               </defs>
               <rect class="body-plate" x="2" y="2" width="296" height="466" rx="8"/>
@@ -125,18 +131,20 @@
                   d="M168 452h26l4 12h-34Z" [attr.fill]="hpColour(loc.key)"/>
                 <path *ngIf="hasWoundType(loc.key,'Отсечена') && loc.seam" class="wound-seam" [attr.d]="loc.seam"/>
                 <g *ngIf="hasWoundType(loc.key,'Пронзена')" class="wound-impale" aria-hidden="true">
+                  <circle class="impale-wound" [attr.cx]="loc.impale[2]" [attr.cy]="loc.impale[3]" r="4.5"/>
                   <line [attr.x1]="loc.impale[0]" [attr.y1]="loc.impale[1]" [attr.x2]="loc.impale[2]" [attr.y2]="loc.impale[3]"
-                    marker-end="url(#arrowHead)"/>
-                  <circle [attr.cx]="loc.impale[0]" [attr.cy]="loc.impale[1]" r="2.6"/>
+                    marker-start="url(#arrowFletch)" marker-end="url(#arrowHead)"/>
+                  <circle [attr.cx]="loc.impale[0]" [attr.cy]="loc.impale[1]" r="2.2"/>
                 </g>
                 <g *ngIf="hasWoundType(loc.key,'Кровотечение')" class="wound-bleed" aria-hidden="true"
-                  [attr.transform]="'translate(' + loc.anchorX + ',' + loc.anchorY + ')'">
-                  <path d="M-8 18c0 4-3 6-3 9a3 3 0 0 0 6 0c0-3-3-5-3-9Z"/>
-                  <path d="M4 26c0 3-2 5-2 7a2.4 2.4 0 0 0 5 0c0-2-3-4-3-7Z"/>
+                  [attr.transform]="'translate(' + loc.anchorX + ',' + woundAnchorY(loc) + ')'">
+                  <path class="bleed-cut" d="M-7 0Q0 4 7 0"/>
+                  <path d="M-5 12c0 4-3 7-3 10a3.5 3.5 0 0 0 7 0c0-4-4-6-4-10Z"/>
+                  <path d="M5 23c0 3-2 6-2 9a3 3 0 0 0 6 0c0-4-4-6-4-9Z"/>
                 </g>
                 <g *ngIf="hasWoundType(loc.key,'Шрам')" class="wound-scar" aria-hidden="true"
-                  [attr.transform]="'translate(' + loc.anchorX + ',' + (loc.anchorY + 6) + ')'">
-                  <path d="M-14 -4L12 5M-10 2L8 9"/>
+                  [attr.transform]="'translate(' + loc.anchorX + ',' + (woundAnchorY(loc) + 6) + ')'">
+                  <path [attr.d]="woundScarPath(loc)"/>
                 </g>
               </g>
               <g class="body-details" aria-hidden="true">
@@ -231,10 +239,10 @@
                 <span>AP: {{currentFatigueRule.actionPoints===null?'—':currentFatigueRule.actionPoints}}</span>
               </div>
             </div>
-            <div class="effect-row" *ngFor="let effect of effects">
+            <div class="effect-row" *ngFor="let effect of effects" [class.is-injury]="!!effect.injury">
               <div><strong>{{effect.name}}</strong><small *ngIf="effect.duration">Длительность: {{effect.duration}}</small>
                 <p class="effect-description" *ngIf="effect.description">{{effect.description}}</p>
-                <small *ngFor="let mod of effect.modifiers">{{modifierLabel(mod)}}</small>
+                <small class="effect-modifier" *ngFor="let mod of effect.modifiers">{{modifierLabel(mod)}}</small>
               </div>
               <span class="effect-actions">
                 <button type="button" (click)="openEffectDialog(effect)" [attr.aria-label]="'Изменить эффект ' + effect.name">✎</button>
@@ -506,7 +514,7 @@
       <div class="effect-modifier-heading">Модификаторы <span>(необязательно)</span></div>
       <div class="modifier-row" *ngFor="let mod of newModifiers;let i=index">
         <select [ngModel]="mod.kind" (ngModelChange)="setModifierKind(mod,$event)" [attr.aria-label]="'Тип модификатора '+(i+1)">
-          <option value="characteristic">Характеристика</option><option value="skill">Навык</option><option value="attribute">Атрибут</option><option value="magic">Магия</option>
+          <option value="characteristic">Характеристика</option><option value="skill">Навык</option><option value="attribute">Атрибут</option><option value="magic">Магия</option><option value="locationHp">Максимальное здоровье локации</option>
         </select>
         <select [ngModel]="mod.key" (ngModelChange)="setModifierKey(mod,$event)" [attr.aria-label]="'Цель модификатора '+(i+1)">
           <option *ngFor="let option of modifierOptions(mod.kind);trackBy:trackModifierOption" [value]="option.key">{{option.label}}</option>

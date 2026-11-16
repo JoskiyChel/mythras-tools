@@ -49,6 +49,8 @@ interface LocationGeometry {
   impale:[number,number,number,number];
   anchorX:number;
   anchorY:number;
+  /** Relative scar line, sized for the part; defaults to a long diagonal. */
+  scar?:string;
   /** Label position after a dismemberment, so it stays on the remaining stub. */
   stubAnchorY?:number;
 }
@@ -64,48 +66,53 @@ const LOCATION_GEOMETRY: Record<HitLocation, LocationGeometry> = {
   head: {
     path:'M150 14c-16 0-26 12-26 28 0 13 8 25 26 33 18-8 26-20 26-33 0-16-10-28-26-28Z',
     seam:'M132 72Q150 80 168 72',
-    impale:[108,22,196,56],
+    impale:[106,32,146,46],
     anchorX:150, anchorY:44,
+    scar:'M-9 -3L7 4M-6 1L5 6',
   },
   chest: {
     path:'M104 96C116 84 132 80 150 80s34 4 46 16l-7 42-4 54c-11 5-23 7-35 7s-24-2-35-7l-4-54Z',
     seam:'M104 190Q150 202 196 190',
-    impale:[90,122,210,158],
+    impale:[84,120,154,138],
     anchorX:150, anchorY:144,
   },
   abdoment: {
     path:'M112 202c12 5 26 7 38 7s26-2 38-7l5 46-2 30c-13 5-27 8-41 8s-28-3-41-8l-2-30Z',
     seam:'M112 282Q150 294 188 282',
-    impale:[96,250,204,232],
+    impale:[92,248,156,246],
     anchorX:150, anchorY:244,
   },
   rightArm: {
     path:'M106 98C92 100 84 108 81 122L75 194C74 202 79 207 85 206L89 248C90 260 87 270 91 275C97 281 105 277 106 266L109 210L115 150L118 112Z',
     stubPath:'M106 98C92 100 84 108 81 122L77 158L94 162L101 124Z',
     seam:'M77 158L94 162',
-    impale:[58,200,104,166],
-    anchorX:78, anchorY:214, stubAnchorY:140,
+    impale:[50,206,86,198],
+    anchorX:90, anchorY:214, stubAnchorY:140,
+    scar:'M-6 -5L5 4M-4 -1L4 6',
   },
   leftArm: {
     path:'M194 98C208 100 216 108 219 122L225 194C226 202 221 207 215 206L211 248C210 260 213 270 209 275C203 281 195 277 194 266L191 210L185 150L182 112Z',
     stubPath:'M194 98C208 100 216 108 219 122L223 158L206 162L199 124Z',
     seam:'M223 158L206 162',
-    impale:[196,166,242,200],
-    anchorX:222, anchorY:214, stubAnchorY:140,
+    impale:[250,206,214,198],
+    anchorX:210, anchorY:214, stubAnchorY:140,
+    scar:'M-6 -5L5 4M-4 -1L4 6',
   },
   rightLeg: {
     path:'M122 286C112 292 108 304 108 318L104 370C104 380 109 386 115 386L113 436C113 448 109 455 117 458C125 461 132 453 132 443L134 386C140 382 142 374 142 364L146 292Z',
     stubPath:'M122 286C112 292 108 304 108 318L106 360L134 360L140 318L146 292Z',
     seam:'M106 360L134 360',
-    impale:[98,340,158,366],
-    anchorX:133, anchorY:404, stubAnchorY:340,
+    impale:[86,336,124,346],
+    anchorX:120, anchorY:404, stubAnchorY:340,
+    scar:'M-7 -4L6 4M-5 0L4 5',
   },
   leftLeg: {
     path:'M178 286C188 292 192 304 192 318L196 370C196 380 191 386 185 386L187 436C187 448 191 455 183 458C175 461 168 453 168 443L166 386C160 382 158 374 158 364L154 292Z',
     stubPath:'M178 286C188 292 192 304 192 318L194 360L166 360L160 318L154 292Z',
     seam:'M194 360L166 360',
-    impale:[202,340,142,366],
-    anchorX:167, anchorY:404, stubAnchorY:340,
+    impale:[214,336,176,346],
+    anchorX:180, anchorY:404, stubAnchorY:340,
+    scar:'M-7 -4L6 4M-5 0L4 5',
   },
 };
 const ATT_KEYS: {key:AttributeKey; name:string}[] = [
@@ -143,6 +150,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   fatigueTableOpen=false;
   readonly characteristicModifierOptions=CHARACTERISTICS.map(key=>({key,label:key.toUpperCase()}));
   readonly attributeModifierOptions=ATT_KEYS.map(x=>({key:x.key,label:x.name}));
+  readonly locationHpOptions=HIT_LOCATION_RULES.map(rule=>({key:rule.key,label:rule.labelRu}));
   private skillModifierOptions:{key:string;label:string;skillId?:string}[]=[];
   /** ТЗ §5 (решение из design/COMPANION-OPEN-QUESTIONS.md): one magic kind with named stats. */
   readonly magicModifierOptions:{key:MagicStatKey;label:string}[]=[
@@ -399,16 +407,18 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     if(kind==='characteristic')return this.characteristicModifierOptions;
     if(kind==='attribute')return this.attributeModifierOptions;
     if(kind==='magic')return this.magicModifierOptions;
+    if(kind==='locationHp')return this.locationHpOptions;
     return this.skillModifierOptions;
   }
   modifierLabel(mod:SheetModifier):string {
-    const kindLabel:Record<SheetModifier['kind'],string>={characteristic:'Характеристика',skill:'Навык',attribute:'Атрибут',magic:'Магия'};
+    const kindLabel:Record<SheetModifier['kind'],string>={characteristic:'Характеристика',skill:'Навык',attribute:'Атрибут',magic:'Магия',locationHp:'Максимальное здоровье'};
     const target=this.modifierOptions(mod.kind).find(option=>option.key===mod.key)?.label??mod.key;
     return kindLabel[mod.kind]+': '+target+' '+(mod.amount>0?'+':'')+mod.amount;
   }
   trackModifierOption(_index:number,option:{key:string}):string{return option.key;}
   setModifierKind(mod:SheetModifier,kind:SheetModifier['kind']):void {
     mod.kind=kind;mod.key=this.modifierOptions(kind)[0]?.key||'';delete mod.skillId;
+    if(kind==='locationHp'&&mod.amount>0)mod.amount=-1;
   }
   setModifierKey(mod:SheetModifier,key:string):void {
     mod.key=key;
@@ -456,10 +466,15 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   }
   private openInjuryEffect(location:HitLocation,type:string):void {
     let effect=this.effects.find(entry=>entry.injury?.location===location&&entry.injury?.type===type);
+    if(effect&&type==='Увечье'&&!(effect.modifiers||[]).some(mod=>mod.kind==='locationHp'&&mod.key===location)){
+      effect.modifiers=[...(effect.modifiers||[]),{kind:'locationHp',key:location,amount:-1}];
+    }
     if(!effect){
       effect={id:this.newEffectId(),name:this.injuryEffectName(location,type),
         duration:type==='Кровотечение'?'До остановки кровотечения':'Постоянно',
-        description:this.injuryEffectDescription(type),modifiers:[],injury:{location,type}};
+        description:this.injuryEffectDescription(type),
+        modifiers:type==='Увечье'?[{kind:'locationHp',key:location,amount:-1}]:[],
+        injury:{location,type}};
       companionState(this.character).effects=[...this.effects,effect];
     }
     this.openEffectDialog(effect);
@@ -484,9 +499,17 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     return mix(serious,healthy,Math.max(0,Math.min(1,n/max)));
   }
   /** A wound changes the part itself: a severed part is drawn as the remaining
-   * stub, a crushed one gets the hatch pattern, an impaled one a through-line. */
+   * stub, a maimed one gets crumpled edges, an impaled one an embedded arrow. */
   partPath(loc:LocationDisplay):string {
     return this.hasWoundType(loc.key,'Отсечена')&&loc.stubPath?loc.stubPath:loc.path;
+  }
+  /** Bleeding and scars follow the remaining stump after dismemberment. */
+  woundAnchorY(loc:LocationDisplay):number {
+    return this.hasWoundType(loc.key,'Отсечена')&&loc.stubAnchorY!==undefined
+      ? loc.stubAnchorY : loc.anchorY;
+  }
+  woundScarPath(loc:LocationDisplay):string {
+    return loc.scar ?? 'M-14 -4L12 5M-10 2L8 9';
   }
   hasWoundType(key:HitLocation,type:string):boolean {
     return locationInjuries(this.character,key).includes(type);

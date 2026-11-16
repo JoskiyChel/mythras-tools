@@ -310,6 +310,17 @@ describe('Companion sheet / Mythras check and magic formulas', () => {
     expect((c.companion as any).injuries.head).toBeUndefined();
   });
 
+  it('applies a location max-HP modifier and keeps the legacy maim fallback', () => {
+    const c=character();
+    const base=maxLocationHp(c,'leftArm');
+    setLocationInjuries(c,'leftArm',['Увечье']);
+    expect(maxLocationHp(c,'leftArm')).toBe(base-1);
+    companionState(c).effects=[{id:'maim',name:'Увечье',duration:'',modifiers:[
+      {kind:'locationHp',key:'leftArm',amount:-2},
+    ]}];
+    expect(maxLocationHp(c,'leftArm')).toBe(base-2);
+  });
+
   it('targets one of two same-named skills when the modifier carries a skill id (R2)', () => {
     const c=character();
     const first=Object.assign(new Skill('Lore',true,'int','pow'),{extraBonus:0,force:true,id:'skill-a'});

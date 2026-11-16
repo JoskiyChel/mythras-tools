@@ -3,6 +3,7 @@ import { CombatStyle } from '../../model/combat-style';
 import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { hydrateCharacter } from '../../services/character-format';
+import { SheetModifier } from '../../services/companion-sheet';
 import { CompanionCharacterSheetComponent } from './companion-character-sheet.component';
 
 describe('Companion permanent advancement', () => {
@@ -74,12 +75,16 @@ describe('Companion permanent advancement', () => {
     const maim = component.effects.find(effect => effect.injury?.type === 'Увечье')!;
     expect(maim.name).toBe('Увечье левой руки');
     expect(maim.description).toContain('навсегда теряет 1 пункт');
+    expect(maim.modifiers).toEqual([{kind:'locationHp',key:'leftArm',amount:-1}]);
+    expect(component.modifierLabel(maim.modifiers[0])).toBe('Максимальное здоровье: Левая рука -1');
     expect(component.addingEffect).toBeTrue();
-    component.cancelEffect();
-    expect(component.effects).toContain(maim);
+    component.newModifiers[0].amount = -2;
+    component.applyEffect();
+    expect(component.maxHp('leftArm')).toBe(baseMax - 2);
 
     component.toggleInjury('Отсечена');
     expect(component.injuryText('leftArm')).toBe('Отсечена');
+    expect(component.maxHp('leftArm')).toBe(baseMax);
     expect(component.effects.some(effect => effect.injury?.type === 'Увечье')).toBeFalse();
     const severed = component.effects.find(effect => effect.injury?.type === 'Отсечена')!;
     expect(severed.name).toBe('Отсечённая левая рука');
@@ -94,6 +99,11 @@ describe('Companion permanent advancement', () => {
       .toBe('Характеристика: STR +1');
     expect(component.modifierLabel({kind:'magic',key:'theism.poolMax',amount:2}))
       .toBe('Магия: Theism · максимум Devotion Pool +2');
+    const locationModifier:SheetModifier = {kind:'characteristic',key:'str',amount:1};
+    component.setModifierKind(locationModifier,'locationHp');
+    expect(locationModifier.key).toBe('head');
+    expect(locationModifier.amount).toBe(-1);
+    expect(component.modifierLabel(locationModifier)).toBe('Максимальное здоровье: Голова -1');
   });
 
   it('retains skill and magic buttons across change detection for focus restoration', () => {
