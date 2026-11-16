@@ -4,6 +4,7 @@
     <div class="masthead-tools">
       <button class="skills-toggle" type="button" (click)="skillsOpen=!skillsOpen" [attr.aria-expanded]="skillsOpen" aria-controls="companion-skills">Навыки</button>
       <a routerLink="/menu">Библиотека</a>
+      <button type="button" (click)="diceDialog=true">Кубики</button>
       <a routerLink="/view">PDF / Печать</a>
       <button type="button" (click)="editInBuilder()">Конструктор</button>
       <button type="button" (click)="exportJson()">Сохранить JSON</button>
@@ -418,7 +419,7 @@
 
 <!-- Skill difficulty modal, closed by backdrop, button and Escape -->
 <div class="overlay" *ngIf="activeSkill" (mousedown)="stopOverlay($event)">
-  <div class="dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-label="Сложности навыка">
+  <div class="dialog skill-check-dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-label="Сложности навыка">
     <header><div><small>Проверка навыка</small><h2>{{activeSkill.name}}</h2></div><button type="button" (click)="activeSkill=null" aria-label="Закрыть">×</button></header>
     <div class="dialog-body"><div class="dialog-result"><span>Текущее значение</span><strong>{{skillValue(activeSkill)}}%</strong></div>
       <div class="augment-block">
@@ -438,7 +439,10 @@
         <p class="augment-note">Прибавка входит в обычный шанс успеха, но не меняет Critical и Fumble.</p>
       </div>
       <div class="difficulty-grid">
-        <div *ngFor="let difficulty of difficulties">
+        <button class="difficulty-card" type="button" *ngFor="let difficulty of difficulties"
+          [class.selected]="selectedDifficulty.name===difficulty.name"
+          (click)="selectDifficulty(difficulty)"
+          [attr.aria-pressed]="selectedDifficulty.name===difficulty.name">
           <span>{{difficulty.name}}</span>
           <ng-container *ngIf="thresholds(difficulty) as check">
             <strong *ngIf="check.mode==='normal'">{{check.ordinary}}%</strong>
@@ -446,8 +450,93 @@
             <strong *ngIf="check.mode==='hopeless'">Невозможно</strong>
             <small *ngIf="check.mode==='normal'">Critical ≤ {{check.critical}} · Fumble {{check.fumbleFrom}}–00</small>
           </ng-container>
-        </div>
+        </button>
       </div>
+
+      <section class="check-panel" *ngIf="selectedThresholds as target">
+        <div class="check-panel-head">
+          <div><span>Выбранная проверка</span><strong>{{selectedDifficulty.name}}</strong></div>
+          <span *ngIf="target.mode==='normal'">Цель {{target.ordinary}}% · Critical ≤ {{target.critical}} · Fumble {{target.fumbleFrom}}–00</span>
+          <span *ngIf="target.mode!=='normal'">{{target.mode==='automatic' ? 'Автоматический успех' : 'Проверка невозможна'}}</span>
+        </div>
+        <ng-container *ngIf="target.mode==='normal'; else noRoll">
+          <div class="check-mode" role="group" aria-label="Способ броска">
+            <button type="button" [class.active]="checkRollMode==='virtual'" (click)="setCheckMode('virtual')">Виртуальный d100</button>
+            <button type="button" [class.active]="checkRollMode==='manual'" (click)="setCheckMode('manual')">Физический d100</button>
+          </div>
+          <div class="check-roll-row" *ngIf="checkRollMode==='virtual'">
+            <button class="primary compact" type="button" (click)="rollCheck()">{{checkResult ? 'Перебросить' : 'Бросить d100'}}</button>
+            <span class="check-die" *ngIf="checkDiceResult">d100 = <strong>{{checkDiceResult.total}}</strong></span>
+          </div>
+          <div class="check-roll-row manual-check" *ngIf="checkRollMode==='manual'">
+            <label>Результат d100
+              <input type="number" min="1" max="100" [(ngModel)]="manualCheckRoll" aria-label="Результат физического d100">
+            </label>
+            <button class="primary compact" type="button" (click)="rollCheck()">Проверить</button>
+          </div>
+          <p class="check-error" *ngIf="checkError" role="alert">{{checkError}}</p>
+          <div class="check-result" *ngIf="checkResult" [class.critical]="checkResult.outcome==='critical'"
+            [class.success]="checkResult.outcome==='success'" [class.failure]="checkResult.outcome==='failure'"
+            [class.fumble]="checkResult.outcome==='fumble'" role="status">
+            <strong>{{checkResult.label}}</strong>
+            <span *ngIf="checkResult.roll!==null">Бросок {{checkResult.roll}} · {{selectedDifficulty.name}}</span>
+            <small>{{checkResult.explanation}}</small>
+          </div>
+        </ng-container>
+        <ng-template #noRoll>
+          <p class="check-no-roll">{{target.mode==='automatic' ? 'Бросок не требуется: успех автоматический.' : 'Проверка невозможна при этой сложности.'}}</p>
+        </ng-template>
+      </section>
+
+      <section class="check-history" *ngIf="checkHistory.length">
+        <div class="check-history-head"><span>История проверок <small>только в этом сеансе</small></span><button class="quiet compact" type="button" (click)="clearCheckHistory()">Очистить</button></div>
+        <ol>
+          <li *ngFor="let entry of checkHistory" [class.critical]="entry.outcome==='critical'" [class.success]="entry.outcome==='success'" [class.failure]="entry.outcome==='failure'" [class.fumble]="entry.outcome==='fumble'">
+            <span>{{entry.skill}}</span><span>{{entry.difficulty}}</span><strong>{{entry.label}}</strong><span>{{entry.roll}}</span>
+          </li>
+        </ol>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- Generic dice tray: expressions, virtual/manual d100, session history. -->
+<div class="overlay" *ngIf="diceDialog" (mousedown)="stopOverlay($event)">
+  <div class="dialog dice-dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-label="Кубики">
+    <header><div><small>Бросок кубиков</small><h2>Кубики</h2></div><button type="button" (click)="diceDialog=false" aria-label="Закрыть">×</button></header>
+    <div class="dialog-body">
+      <label class="field-label">Формула
+        <input class="search-field dice-expression" [(ngModel)]="diceExpression" (keydown.enter)="rollDiceExpression()" placeholder="2d6 + 1d8 − 3" aria-label="Формула кубиков">
+      </label>
+      <div class="dice-presets" aria-label="Готовые формулы">
+        <button *ngFor="let preset of ['1d100','1d20','2d6','1d8']" type="button" class="quiet compact" (click)="useDicePreset(preset)">{{preset}}</button>
+      </div>
+      <div class="check-mode" role="group" aria-label="Способ броска">
+        <button type="button" [class.active]="diceMode==='virtual'" (click)="setDiceMode('virtual')">Виртуальные</button>
+        <button type="button" [class.active]="diceMode==='manual'" (click)="setDiceMode('manual')">Физические</button>
+      </div>
+      <div class="check-roll-row" *ngIf="diceMode==='virtual'">
+        <button class="primary compact" type="button" (click)="rollDiceExpression()">{{diceResult ? 'Перебросить' : 'Бросить'}}</button>
+      </div>
+      <div class="check-roll-row manual-dice" *ngIf="diceMode==='manual'">
+        <label>Значения через запятую
+          <input type="text" [(ngModel)]="manualDiceValues" placeholder="4, 2" aria-label="Значения физических кубиков">
+        </label>
+        <button class="primary compact" type="button" (click)="acceptManualDice()">Проверить</button>
+      </div>
+      <p class="check-error" *ngIf="diceError" role="alert">{{diceError}}</p>
+      <div class="dice-result" *ngIf="diceResult">
+        <div><strong>{{diceResult.total}}</strong><span>{{diceResult.normalized}} · {{diceResult.dieCount}} куб.</span></div>
+        <p>{{diceBreakdown(diceResult)}}</p>
+      </div>
+      <section class="check-history dice-history" *ngIf="diceHistory.length">
+        <div class="check-history-head"><span>История бросков <small>только в этом сеансе</small></span><button class="quiet compact" type="button" (click)="clearDiceHistory()">Очистить</button></div>
+        <ol>
+          <li *ngFor="let entry of diceHistory">
+            <span>{{entry.expression}}</span><span>{{entry.mode==='virtual'?'виртуально':'вручную'}}</span><strong>{{entry.total}}</strong>
+          </li>
+        </ol>
+      </section>
     </div>
   </div>
 </div>

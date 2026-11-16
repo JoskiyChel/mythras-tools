@@ -35,8 +35,12 @@ import {
   animismSpiritDamage, mysticismTotalIntensity, mysticismTalentIntensity, mysticismTrainedLimit,
   sorceryIntensity, sorceryMemoryLimit, folkMagicStartingSpells,
 } from '../../services/companion-sheet';
+import { DiceRollResult, resultFromValues, rollDice } from '../../services/dice';
+import { SkillCheckResult, resolveSkillCheck } from '../../services/skill-check';
 
 interface SheetInfo { title:string; source?:string; sections:{label:string;paragraphs:string[]}[]; }
+interface CheckHistoryEntry { skill:string; difficulty:string; roll:number; label:string; outcome:string; }
+interface DiceHistoryEntry { expression:string; total:number; mode:'virtual'|'manual'; }
 
 type SheetTab = 'weapons'|'magic'|'armour'|'equipment'|'notes';
 /** Geometry of one part of the anatomical plate. `path` is the whole part,
@@ -181,6 +185,22 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   /** One augmenting skill at a time; it affects the current check only. */
   augmentSkill:Skill|null=null;
   augmentQuery='';
+  /** A check is always resolved against one selected difficulty step. */
+  selectedDifficulty:DifficultyStep=DIFFICULTY_STEPS[3];
+  checkRollMode:'virtual'|'manual'='virtual';
+  manualCheckRoll:number|null=null;
+  checkDiceResult:DiceRollResult|null=null;
+  checkResult:SkillCheckResult|null=null;
+  checkError='';
+  /** Deliberately session-only: these records are never written to the character. */
+  readonly checkHistory:CheckHistoryEntry[]=[];
+  diceDialog=false;
+  diceExpression='1d100';
+  diceMode:'virtual'|'manual'='virtual';
+  diceResult:DiceRollResult|null=null;
+  diceError='';
+  manualDiceValues='';
+  readonly diceHistory:DiceHistoryEntry[]=[];
   /** Mobile: the skills panel is a drawer, closed by default. */
   skillsOpen=false;
   /** HP to deal or restore with a single click. The amount is shared by all locations. */
@@ -235,7 +255,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   onEdit():void {this.saveHandle?.schedule();}
   @HostListener('window:beforeunload') @HostListener('window:pagehide')
   flush():void {this.saveHandle?.flush();}
-  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.cancelEffect();this.fatigueTableOpen=false;}
+  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.diceDialog=false;this.cancelEffect();this.fatigueTableOpen=false;}
   save():void {if(this.character)this.storage.saveCharacter(this.character,'view-character');}
   editInBuilder(section?:BuilderSection,focus?:string):void {
     this.flush();if(this.storage.error)return;
@@ -284,6 +304,8 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     this.activeSkill=skill;
     this.augmentSkill=null;
     this.augmentQuery='';
+    this.selectedDifficulty=DIFFICULTY_STEPS[3];
+    this.resetCheckRoll();
     if(skill)this.skillsOpen=false;
   }
   /** Search over the same catalog the skills column shows, including custom and
@@ -303,11 +325,113 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   }
   get augmentValue():number {return this.augmentSkill?this.skillValue(this.augmentSkill):0;}
   get augmentBonus():number {return augmentingBonus(this.augmentValue);}
-  chooseAugment(skill:Skill):void {if(skill===this.activeSkill)return;this.augmentSkill=skill;this.augmentQuery='';}
-  clearAugment():void {this.augmentSkill=null;this.augmentQuery='';}
+  chooseAugment(skill:Skill):void {if(skill===this.activeSkill)return;this.augmentSkill=skill;this.augmentQuery='';this.resetCheckRoll();}
+  clearAugment():void {this.augmentSkill=null;this.augmentQuery='';this.resetCheckRoll();}
   thresholds(step:DifficultyStep):CheckThresholds {
     return checkThresholds(this.activeSkill?this.skillValue(this.activeSkill):0,step,this.augmentValue);
   }
+  get selectedThresholds():CheckThresholds {return this.thresholds(this.selectedDifficulty);}
+  selectDifficulty(step:DifficultyStep):void {
+    this.selectedDifficulty=step;
+    this.resetCheckRoll();
+  }
+  setCheckMode(mode:'virtual'|'manual'):void {
+    if(this.checkRollMode===mode)return;
+    this.checkRollMode=mode;
+    this.resetCheckRoll();
+  }
+  resetCheckRoll():void {
+    this.manualCheckRoll=null;
+    this.checkDiceResult=null;
+    this.checkResult=null;
+    this.checkError='';
+  }
+  /** Resolve against the selected grade; the virtual die is a real d100. */
+  rollCheck():void {
+    if(!this.activeSkill)return;
+    const target=this.selectedThresholds;
+    this.checkError='';
+    if(target.mode!=='normal'){
+      this.checkDiceResult=null;
+      this.checkResult=resolveSkillCheck(0,target);
+      return;
+    }
+    try{
+      let roll:number;
+      if(this.checkRollMode==='virtual'){
+        const virtual=rollDice('1d100');
+        this.checkDiceResult=virtual;
+        roll=virtual.total;
+      }else{
+        roll=Number(this.manualCheckRoll);
+        this.checkDiceResult=null;
+      }
+      this.checkResult=resolveSkillCheck(roll,target);
+      if(!this.checkResult)return;
+      this.checkHistory.unshift({
+        skill:this.activeSkill.name,
+        difficulty:this.selectedDifficulty.name,
+        roll:this.checkResult.roll ?? 0,
+        label:this.checkResult.label,
+        outcome:this.checkResult.outcome,
+      });
+      this.checkHistory.splice(10);
+    }catch(error){
+      this.checkResult=null;
+      this.checkError=error instanceof Error?error.message:'Не удалось выполнить бросок.';
+    }
+  }
+  clearCheckHistory():void {this.checkHistory.splice(0);}
+  setDiceMode(mode:'virtual'|'manual'):void {
+    if(this.diceMode===mode)return;
+    this.diceMode=mode;
+    this.diceResult=null;
+    this.diceError='';
+    this.manualDiceValues='';
+  }
+  useDicePreset(expression:string):void {
+    this.diceExpression=expression;
+    this.diceResult=null;
+    this.diceError='';
+  }
+  rollDiceExpression():void {
+    try{
+      const result=rollDice(this.diceExpression);
+      this.diceResult=result;
+      this.diceError='';
+      this.rememberDice(result,'virtual');
+    }catch(error){
+      this.diceResult=null;
+      this.diceError=error instanceof Error?error.message:'Не удалось выполнить бросок.';
+    }
+  }
+  acceptManualDice():void {
+    try{
+      const values=this.manualDiceValues
+        .split(/[\s,;]+/)
+        .filter(value=>value.length)
+        .map(value=>Number(value));
+      const result=resultFromValues(this.diceExpression,values);
+      this.diceResult=result;
+      this.diceError='';
+      this.rememberDice(result,'manual');
+    }catch(error){
+      this.diceResult=null;
+      this.diceError=error instanceof Error?error.message:'Проверьте введённые значения.';
+    }
+  }
+  private rememberDice(result:DiceRollResult,mode:'virtual'|'manual'):void {
+    this.diceHistory.unshift({expression:result.normalized,total:result.total,mode});
+    this.diceHistory.splice(10);
+  }
+  diceBreakdown(result:DiceRollResult):string {
+    const dice=result.terms
+      .map(term=>term.values.join(' + '))
+      .join(' + ');
+    if(!result.modifier)return `${dice} = ${result.total}`;
+    return `${dice} ${result.modifier>0?'+':'−'} ${Math.abs(result.modifier)} = ${result.total}`;
+  }
+  clearDiceHistory():void {this.diceHistory.splice(0);}
   attr(key:'ap'|'healing'|'init'|'luck'|'expMod'):number {
     return attributeTotal(this.character,key,this.upgrade?this.draftStats:{});
   }
@@ -835,7 +959,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
     this.discardUpgrade();
   }
   difficultyTarget(multiplier:number):number {return this.activeSkill?Math.ceil(this.skillValue(this.activeSkill)*multiplier):0;}
-  stopOverlay(event:MouseEvent):void {if(event.target===event.currentTarget){this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.cancelEffect();this.closePicker();this.fatigueTableOpen=false;}}
+  stopOverlay(event:MouseEvent):void {if(event.target===event.currentTarget){this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.diceDialog=false;this.cancelEffect();this.closePicker();this.fatigueTableOpen=false;}}
   // Getters return fresh grouping objects; stable keys retain the triggering
   // buttons so dialog focus restoration and keyboard navigation can work.
   trackGroup(_index:number,group:{name:string}):string{return group.name;}

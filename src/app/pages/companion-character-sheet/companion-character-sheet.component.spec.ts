@@ -79,6 +79,41 @@ describe('Companion permanent advancement', () => {
     expect(component.newModifiers).toEqual([{kind: 'skill', key: 'brawn', amount: 10}]);
   });
 
+  it('resolves a manual d100 check and keeps the roll history in memory only', () => {
+    const skill = component.character.skills.skills.find(entry => entry.name === 'Athletics')!;
+    component.openSkill(skill);
+    component.setCheckMode('manual');
+    component.manualCheckRoll = 1;
+    component.rollCheck();
+    expect(component.checkResult?.outcome).toBe('critical');
+    expect(component.checkResult?.roll).toBe(1);
+    expect(component.checkHistory.length).toBe(1);
+    expect(JSON.stringify(component.character)).not.toContain('checkHistory');
+
+    component.manualCheckRoll = 100;
+    component.rollCheck();
+    expect(component.checkResult?.outcome).toBe('fumble');
+    expect(component.checkHistory.length).toBe(2);
+    component.clearCheckHistory();
+    expect(component.checkHistory.length).toBe(0);
+  });
+
+  it('accepts a physical dice expression and reports parse errors', () => {
+    component.setDiceMode('manual');
+    component.diceExpression = '2d6+3';
+    component.manualDiceValues = '2, 5';
+    component.acceptManualDice();
+    expect(component.diceResult?.total).toBe(10);
+    expect(component.diceHistory.length).toBe(1);
+
+    component.diceExpression = '2d6+';
+    component.rollDiceExpression();
+    expect(component.diceResult).toBeNull();
+    expect(component.diceError).toContain('разобрать');
+    component.clearDiceHistory();
+    expect(component.diceHistory.length).toBe(0);
+  });
+
   it('makes physical traumas exclusive, links them to effects and removes both sides', () => {
     component.character.companion = {};
     component.selectLocation('leftArm');

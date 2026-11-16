@@ -534,3 +534,71 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
 .wound-impale .impale-wound { fill:#7a2418; stroke:#e0785a; stroke-width:.9; }
 .wound-bleed path { fill:#e0785a; stroke:#2a120c; stroke-width:.8; }
 .wound-bleed .bleed-cut { fill:none; stroke:#e0785a; stroke-width:1.4; stroke-linecap:round; }
+
+/* Skill check: select a grade, then resolve a virtual or physical d100. */
+.skill-check-dialog { width:min(100%,760px); }
+.difficulty-card {
+  display:block; width:100%; text-align:left; color:inherit; font:inherit; cursor:pointer;
+  border:1px solid var(--ui-border); border-radius:8px;
+  background:var(--ui-surface); padding:12px;
+}
+.difficulty-card:hover { border-color:var(--ui-accent); }
+.difficulty-card.selected { border-color:var(--ui-accent); background:var(--ui-olive-soft); }
+.difficulty-card>span { display:block; font-size:12px; color:var(--ui-secondary); }
+.difficulty-card>strong { display:block; color:var(--ui-olive); font-size:17px; margin-top:4px; }
+.difficulty-card>small { display:block; color:var(--ui-muted); font-size:10px; margin-top:3px; line-height:1.35; }
+.check-panel { margin-top:12px; padding:12px; border:1px solid var(--ui-border); border-radius:9px; background:var(--ui-canvas); }
+.check-panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; color:var(--ui-secondary); font-size:12px; }
+.check-panel-head div>span { display:block; font-size:11px; color:var(--ui-muted); }
+.check-panel-head div>strong { display:block; color:var(--ui-olive); font-size:15px; margin-top:2px; }
+.check-mode { display:flex; gap:4px; flex-wrap:wrap; margin-top:10px; }
+.check-mode button { background:var(--ui-surface); color:var(--ui-secondary); border:1px solid var(--ui-border); border-radius:6px; padding:6px 10px; font-size:12px; }
+.check-mode button:hover { border-color:var(--ui-accent); color:var(--ui-olive); }
+.check-mode button.active { background:var(--ui-accent); color:var(--ui-on-dark); border-color:var(--ui-accent); }
+.check-roll-row { display:flex; align-items:flex-end; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.check-die { font-size:12px; color:var(--ui-secondary); }
+.check-die strong { color:var(--ui-accent); font-size:17px; }
+.manual-check label { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ui-secondary); }
+.manual-check input { width:80px; padding:6px 8px; border:1px solid var(--ui-border); border-radius:5px; background:var(--ui-surface); color:var(--ui-olive); }
+.check-error { color:var(--ui-danger); font-size:12px; margin:8px 0 0; }
+.check-result { margin-top:10px; padding:8px 10px; border-left:3px solid var(--ui-accent); background:var(--ui-surface); display:flex; flex-direction:column; gap:2px; font-size:12px; color:var(--ui-secondary); }
+.check-result strong { color:var(--ui-olive); font-size:14px; }
+.check-result span { color:var(--ui-secondary); }
+.check-result small { color:var(--ui-muted); line-height:1.4; }
+.check-result.success { border-left-color:var(--ui-success); }
+.check-result.success strong { color:var(--ui-success); }
+.check-result.critical { border-left-color:var(--ui-warning); }
+.check-result.critical strong { color:var(--ui-warning); }
+.check-result.failure { border-left-color:var(--ui-border); }
+.check-result.fumble { border-left-color:var(--ui-danger); }
+.check-result.fumble strong { color:var(--ui-danger); }
+.check-no-roll { margin:10px 0 0; font-size:12px; color:var(--ui-secondary); }
+.check-history { margin-top:12px; border-top:1px solid var(--ui-border); padding-top:10px; }
+.check-history-head { display:flex; align-items:center; justify-content:space-between; gap:8px; color:var(--ui-secondary); font-size:12px; }
+.check-history-head small { color:var(--ui-muted); font-size:10px; }
+.check-history ol { list-style:none; margin:8px 0 0; padding:0; display:grid; gap:4px; }
+.check-history li { display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; gap:8px; align-items:center; font-size:11px; color:var(--ui-secondary); border-bottom:1px solid var(--ui-border); padding:4px 0; }
+.check-history li span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ui-olive); }
+.check-history li strong { color:var(--ui-olive); font-weight:500; }
+.check-history li.critical strong { color:var(--ui-warning); }
+.check-history li.success strong { color:var(--ui-success); }
+.check-history li.failure strong { color:var(--ui-secondary); }
+.check-history li.fumble strong { color:var(--ui-danger); }
+@media(max-width:680px) {
+  .check-history li { grid-template-columns:minmax(0,1fr) auto; }
+  .check-history li span:nth-child(2) { display:none; }
+}
+
+/* Generic dice tray */
+.dice-dialog { width:min(100%,620px); }
+.dice-expression { margin-top:4px; }
+.dice-presets { display:flex; gap:4px; flex-wrap:wrap; margin-top:8px; }
+.dice-presets button { min-width:48px; }
+.manual-dice label { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ui-secondary); flex-wrap:wrap; }
+.manual-dice input { width:150px; padding:6px 8px; border:1px solid var(--ui-border); border-radius:5px; background:var(--ui-surface); color:var(--ui-olive); }
+.dice-result { margin-top:10px; padding:10px; border:1px solid var(--ui-border); border-left:3px solid var(--ui-accent); border-radius:7px; background:var(--ui-canvas); display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+.dice-result>div { display:flex; align-items:baseline; gap:8px; }
+.dice-result strong { font-size:26px; color:var(--ui-accent); line-height:1; }
+.dice-result span { font-size:12px; color:var(--ui-secondary); }
+.dice-result p { margin:0; font-size:12px; color:var(--ui-muted); }
+.dice-history li { grid-template-columns:minmax(0,1fr) auto auto; }
