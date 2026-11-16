@@ -94,6 +94,16 @@ describe('Companion permanent advancement', () => {
     expect(component.injuryText('leftArm')).toBe('');
   });
 
+  it('previews derived attribute changes during Становление', () => {
+    component.beginUpgrade();
+    component.alterStat('dex', 2);
+    expect(component.attrDelta('init')).toBeGreaterThan(0);
+    expect(component.deltaText(component.attrDelta('init'))).toContain('↑');
+    expect(component.deltaText(-2)).toBe('↓ −2');
+    component.alterStat('dex', -2);
+    expect(component.attrDelta('init')).toBe(0);
+  });
+
   it('shows effect modifiers with the same labels as the editor', () => {
     expect(component.modifierLabel({kind:'characteristic',key:'str',amount:1}))
       .toBe('Характеристика: STR +1');

@@ -314,6 +314,27 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   attrOld(key:'ap'|'healing'|'init'|'luck'|'expMod'):number {
     return attributeTotal(this.character,key);
   }
+  /** Derived attributes must show the same up/down preview as skills while a
+   * characteristic edit is still a draft. */
+  attrDelta(key:'ap'|'healing'|'init'|'luck'|'expMod'):number {
+    return this.upgrade ? this.attr(key) - this.attrOld(key) : 0;
+  }
+  get mpDelta():number {
+    return this.upgrade ? this.mpMax - magicPointMaximum(this.character) : 0;
+  }
+  get movementDelta():number {
+    return this.upgrade ? this.currentMovement - movementSummary(this.character).walking : 0;
+  }
+  private damageScore(value:string):number {
+    const match=value.match(/[+-]?\d+/);
+    return match?Number(match[0]):0;
+  }
+  get damageDelta():number {
+    return this.upgrade ? this.damageScore(this.damage) - this.damageScore(damageModifier(this.character)) : 0;
+  }
+  deltaText(delta:number):string {
+    return (delta>0?'↑ +':'↓ −')+Math.abs(delta);
+  }
   get damage():string {return damageModifier(this.character,this.upgrade?this.draftStats:{});}
   get move(){
     const bonus=(name:string)=>this.upgrade?(this.draftSkills.get(this.character.skills.skills.find(s=>s.name===name)!)||0):0;

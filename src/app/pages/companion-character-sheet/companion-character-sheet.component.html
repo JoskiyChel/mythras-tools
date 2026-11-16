@@ -206,19 +206,19 @@
                 </div>
               </div>
               <div class="numbers-grid">
-                <div class="attribute metric"><small>Damage Modifier</small><strong>{{damage}}</strong></div>
-                <div class="attribute metric"><small>Experience Modifier</small><strong>{{attr('expMod') >= 0 ? '+' : ''}}{{attr('expMod')}}</strong></div>
-                <div class="attribute metric"><small>Initiative</small><strong>{{canAct?attr('init'):'—'}}</strong><small class="footnote">Броня −{{armourPenalty}} · Усталость: {{fatigueInitiativePenalty===null?'нет действий':fatigueInitiativePenalty}}</small></div>
+                <div class="attribute metric"><small>Damage Modifier</small><strong>{{damage}}<span class="attr-delta" [class.negative]="damageDelta < 0" *ngIf="upgrade && damageDelta">{{deltaText(damageDelta)}}</span></strong></div>
+                <div class="attribute metric"><small>Experience Modifier</small><strong>{{attr('expMod') >= 0 ? '+' : ''}}{{attr('expMod')}}<span class="attr-delta" [class.negative]="attrDelta('expMod') < 0" *ngIf="upgrade && attrDelta('expMod')">{{deltaText(attrDelta('expMod'))}}</span></strong></div>
+                <div class="attribute metric"><small>Initiative</small><strong>{{canAct?attr('init'):'—'}}<span class="attr-delta" [class.negative]="attrDelta('init') < 0" *ngIf="upgrade && attrDelta('init')">{{deltaText(attrDelta('init'))}}</span></strong><small class="footnote">Броня −{{armourPenalty}} · Усталость: {{fatigueInitiativePenalty===null?'нет действий':fatigueInitiativePenalty}}</small></div>
                 <button class="attribute metric interactive" type="button" (click)="movementDialog=true">
-                  <small>Movement <span class="material-icons ui-icon" aria-hidden="true">open_in_new</span></small><strong>{{currentMovement}} м</strong><small class="footnote">Бег · плавание · прыжки</small>
+                  <small>Movement <span class="material-icons ui-icon" aria-hidden="true">open_in_new</span></small><strong>{{currentMovement}} м<span class="attr-delta" [class.negative]="movementDelta < 0" *ngIf="upgrade && movementDelta">{{deltaText(movementDelta)}}</span></strong><small class="footnote">Бег · плавание · прыжки</small>
                 </button>
-                <div class="resource"><small>Action Points</small><strong>{{currentResource('ap',attr('ap'))}}<span>/{{attr('ap')}}</span></strong>
+                <div class="resource"><small>Action Points</small><strong>{{currentResource('ap',attr('ap'))}}<span>/{{attr('ap')}}</span><span class="attr-delta" [class.negative]="attrDelta('ap') < 0" *ngIf="upgrade && attrDelta('ap')">{{deltaText(attrDelta('ap'))}}</span></strong>
                   <div class="resource-controls"><button type="button" (click)="adjustResource('ap',-1,attr('ap'))">−</button><button type="button" (click)="adjustResource('ap',1,attr('ap'))">＋</button></div></div>
-                <div class="resource"><small>Magic Points</small><strong>{{currentResource('magicPoints',mpMax)}}<span>/{{mpMax}}</span></strong>
+                <div class="resource"><small>Magic Points</small><strong>{{currentResource('magicPoints',mpMax)}}<span>/{{mpMax}}</span><span class="attr-delta" [class.negative]="mpDelta < 0" *ngIf="upgrade && mpDelta">{{deltaText(mpDelta)}}</span></strong>
                   <div class="resource-controls"><button type="button" (click)="adjustResource('magicPoints',-1,mpMax)">−</button><button type="button" (click)="adjustResource('magicPoints',1,mpMax)">＋</button></div></div>
-                <div class="resource"><small>Luck Points</small><strong>{{currentResource('luck',attr('luck'))}}<span>/{{attr('luck')}}</span></strong>
+                <div class="resource"><small>Luck Points</small><strong>{{currentResource('luck',attr('luck'))}}<span>/{{attr('luck')}}</span><span class="attr-delta" [class.negative]="attrDelta('luck') < 0" *ngIf="upgrade && attrDelta('luck')">{{deltaText(attrDelta('luck'))}}</span></strong>
                   <div class="resource-controls"><button type="button" (click)="adjustResource('luck',-1,attr('luck'))">−</button><button type="button" (click)="adjustResource('luck',1,attr('luck'))">＋</button></div></div>
-                <div class="resource static"><small>Healing Rate</small><strong>{{attr('healing')}}</strong></div>
+                <div class="resource static"><small>Healing Rate</small><strong>{{attr('healing')}}<span class="attr-delta" [class.negative]="attrDelta('healing') < 0" *ngIf="upgrade && attrDelta('healing')">{{deltaText(attrDelta('healing'))}}</span></strong></div>
               </div>
             </div>
 
