@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { A11yModule } from '@angular/cdk/a11y';
-import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, DoCheck, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Character } from '../../model/character';
@@ -133,7 +133,7 @@ const ATT_KEYS: {key:AttributeKey; name:string}[] = [
   templateUrl:'./companion-character-sheet.component.html',
   styleUrls:['./companion-character-sheet.component.scss'],
 })
-export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
+export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCheck {
   readonly storage=inject(AppStorageService);
   private readonly router=inject(Router);
   private readonly specialEffects=inject(SpecialEffectsService);
@@ -147,6 +147,12 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   armourLocation:HitLocation='chest';
   spellTradition:'folk'|'sorcery'|'miracles'|null=null;
   private saveHandle?:DebouncedSaveHandle;
+  /** Session-only character snapshots. Never persisted in the character JSON. */
+  private readonly historyPast:string[]=[];
+  private readonly historyFuture:string[]=[];
+  private historySnapshot='';
+  private restoringHistory=false;
+  private readonly historyLimit=30;
   character!:CompanionCharacter;
   readonly characteristics=CHARACTERISTICS;
   readonly fatigueLevels=FATIGUE;
@@ -201,6 +207,11 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   diceError='';
   manualDiceValues='';
   readonly diceHistory:DiceHistoryEntry[]=[];
+  /** Animation is a presentation preference; it never changes a roll. */
+  diceAnimation=true;
+  diceAnimating=false;
+  checkAnimating=false;
+  private animationTimer?:ReturnType<typeof setTimeout>;
   /** Mobile: the skills panel is a drawer, closed by default. */
   skillsOpen=false;
   /** HP to deal or restore with a single click. The amount is shared by all locations. */
@@ -223,6 +234,26 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
   ngOnInit():void {
     this.character=this.storage.readCharacter('view-character') as CompanionCharacter;
     const hpInitialised=initializePristineHitPoints(this.character);
+    this.refreshSkillModifierOptions();
+    this.historySnapshot=JSON.stringify(this.character);
+    this.saveHandle=this.storage.createDebouncedSave(()=>this.save(),350);
+    if(hpInitialised)this.saveHandle.schedule();
+  }
+  ngOnDestroy():void {this.clearAnimationTimer();this.saveHandle?.flush();this.saveHandle?.destroy();}
+  ngDoCheck():void {
+    if(!this.character||this.restoringHistory)return;
+    const snapshot=JSON.stringify(this.character);
+    if(!this.historySnapshot){
+      this.historySnapshot=snapshot;
+      return;
+    }
+    if(snapshot===this.historySnapshot)return;
+    this.historyPast.push(this.historySnapshot);
+    if(this.historyPast.length>this.historyLimit)this.historyPast.splice(0,this.historyPast.length-this.historyLimit);
+    this.historyFuture.length=0;
+    this.historySnapshot=snapshot;
+  }
+  private refreshSkillModifierOptions():void {
     const options=[...this.character.skills.skills,...(this.character.skills.specialized||[]),
       ...(this.character.skills.combatstyles||[]),
       ...(this.character.skills.extraProfessionalCultureSkills||[]),
@@ -247,10 +278,30 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
         }
         return {key:skill.name,label:skill.name};
       });
-    this.saveHandle=this.storage.createDebouncedSave(()=>this.save(),350);
-    if(hpInitialised)this.saveHandle.schedule();
   }
-  ngOnDestroy():void {this.saveHandle?.flush();this.saveHandle?.destroy();}
+  get canUndo():boolean {return !this.upgrade&&this.historyPast.length>0;}
+  get canRedo():boolean {return !this.upgrade&&this.historyFuture.length>0;}
+  undoChange():void {this.restoreHistory(false);}
+  redoChange():void {this.restoreHistory(true);}
+  private restoreHistory(redo:boolean):void {
+    if(this.upgrade)return;
+    const from=redo?this.historyFuture:this.historyPast;
+    const to=redo?this.historyPast:this.historyFuture;
+    const snapshot=from.pop();
+    if(snapshot===undefined)return;
+    const current=JSON.stringify(this.character);
+    to.push(current);
+    if(to.length>this.historyLimit)to.splice(0,to.length-this.historyLimit);
+    this.restoringHistory=true;
+    try{
+      this.character=JSON.parse(snapshot) as CompanionCharacter;
+      this.historySnapshot=snapshot;
+      this.refreshSkillModifierOptions();
+      this.saveHandle?.schedule();
+    }finally{
+      this.restoringHistory=false;
+    }
+  }
   @HostListener('document:input') @HostListener('document:change') @HostListener('document:click')
   onEdit():void {this.saveHandle?.schedule();}
   @HostListener('window:beforeunload') @HostListener('window:pagehide')
@@ -376,10 +427,37 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
         outcome:this.checkResult.outcome,
       });
       this.checkHistory.splice(10);
+      this.animateDiceResult('check');
     }catch(error){
       this.checkResult=null;
       this.checkError=error instanceof Error?error.message:'Не удалось выполнить бросок.';
     }
+  }
+  toggleDiceAnimation():void {
+    this.diceAnimation=!this.diceAnimation;
+    if(!this.diceAnimation)this.clearAnimationTimer();
+  }
+  private animateDiceResult(target:'dice'|'check'):void {
+    if(!this.diceAnimation)return;
+    this.clearAnimationTimer();
+    this.diceAnimating=false;
+    this.checkAnimating=false;
+    this.animationTimer=setTimeout(()=>{
+      if(target==='dice')this.diceAnimating=true;
+      else this.checkAnimating=true;
+      this.animationTimer=setTimeout(()=>{
+        this.diceAnimating=false;
+        this.checkAnimating=false;
+      },420);
+    },0);
+  }
+  private clearAnimationTimer():void {
+    if(this.animationTimer!==undefined){
+      clearTimeout(this.animationTimer);
+      this.animationTimer=undefined;
+    }
+    this.diceAnimating=false;
+    this.checkAnimating=false;
   }
   clearCheckHistory():void {this.checkHistory.splice(0);}
   setDiceMode(mode:'virtual'|'manual'):void {
@@ -400,6 +478,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
       this.diceResult=result;
       this.diceError='';
       this.rememberDice(result,'virtual');
+      this.animateDiceResult('dice');
     }catch(error){
       this.diceResult=null;
       this.diceError=error instanceof Error?error.message:'Не удалось выполнить бросок.';
@@ -415,6 +494,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy {
       this.diceResult=result;
       this.diceError='';
       this.rememberDice(result,'manual');
+      this.animateDiceResult('dice');
     }catch(error){
       this.diceResult=null;
       this.diceError=error instanceof Error?error.message:'Проверьте введённые значения.';

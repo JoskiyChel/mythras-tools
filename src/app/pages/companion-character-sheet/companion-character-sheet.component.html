@@ -2,6 +2,10 @@
   <header class="masthead">
     <div class="masthead-brand">Mythras <small>Companion</small></div>
     <div class="masthead-tools">
+      <span class="history-controls" role="group" aria-label="История изменений">
+        <button type="button" (click)="undoChange()" [disabled]="!canUndo" title="Отменить последнее изменение" aria-label="Отменить последнее изменение">↶</button>
+        <button type="button" (click)="redoChange()" [disabled]="!canRedo" title="Повторить отменённое изменение" aria-label="Повторить отменённое изменение">↷</button>
+      </span>
       <button class="skills-toggle" type="button" (click)="skillsOpen=!skillsOpen" [attr.aria-expanded]="skillsOpen" aria-controls="companion-skills">Навыки</button>
       <a routerLink="/menu">Библиотека</a>
       <button type="button" (click)="diceDialog=true">Кубики</button>
@@ -464,9 +468,10 @@
             <button type="button" [class.active]="checkRollMode==='virtual'" (click)="setCheckMode('virtual')">Виртуальный d100</button>
             <button type="button" [class.active]="checkRollMode==='manual'" (click)="setCheckMode('manual')">Физический d100</button>
           </div>
+          <button class="quiet compact dice-animation-toggle" type="button" (click)="toggleDiceAnimation()" [attr.aria-pressed]="diceAnimation">Анимация: {{diceAnimation ? 'вкл' : 'выкл'}}</button>
           <div class="check-roll-row" *ngIf="checkRollMode==='virtual'">
             <button class="primary compact" type="button" (click)="rollCheck()">{{checkResult ? 'Перебросить' : 'Бросить d100'}}</button>
-            <span class="check-die" *ngIf="checkDiceResult">d100 = <strong>{{checkDiceResult.total}}</strong></span>
+            <span class="check-die" [class.rolling]="checkAnimating" *ngIf="checkDiceResult">d100 = <strong>{{checkDiceResult.total}}</strong></span>
           </div>
           <div class="check-roll-row manual-check" *ngIf="checkRollMode==='manual'">
             <label>Результат d100
@@ -475,7 +480,7 @@
             <button class="primary compact" type="button" (click)="rollCheck()">Проверить</button>
           </div>
           <p class="check-error" *ngIf="checkError" role="alert">{{checkError}}</p>
-          <div class="check-result" *ngIf="checkResult" [class.critical]="checkResult.outcome==='critical'"
+          <div class="check-result" *ngIf="checkResult" [class.rolling]="checkAnimating" [class.critical]="checkResult.outcome==='critical'"
             [class.success]="checkResult.outcome==='success'" [class.failure]="checkResult.outcome==='failure'"
             [class.fumble]="checkResult.outcome==='fumble'" role="status">
             <strong>{{checkResult.label}}</strong>
@@ -515,6 +520,7 @@
         <button type="button" [class.active]="diceMode==='virtual'" (click)="setDiceMode('virtual')">Виртуальные</button>
         <button type="button" [class.active]="diceMode==='manual'" (click)="setDiceMode('manual')">Физические</button>
       </div>
+      <button class="quiet compact dice-animation-toggle" type="button" (click)="toggleDiceAnimation()" [attr.aria-pressed]="diceAnimation">Анимация: {{diceAnimation ? 'вкл' : 'выкл'}}</button>
       <div class="check-roll-row" *ngIf="diceMode==='virtual'">
         <button class="primary compact" type="button" (click)="rollDiceExpression()">{{diceResult ? 'Перебросить' : 'Бросить'}}</button>
       </div>
@@ -525,7 +531,7 @@
         <button class="primary compact" type="button" (click)="acceptManualDice()">Проверить</button>
       </div>
       <p class="check-error" *ngIf="diceError" role="alert">{{diceError}}</p>
-      <div class="dice-result" *ngIf="diceResult">
+      <div class="dice-result" *ngIf="diceResult" [class.rolling]="diceAnimating">
         <div><strong>{{diceResult.total}}</strong><span>{{diceResult.normalized}} · {{diceResult.dieCount}} куб.</span></div>
         <p>{{diceBreakdown(diceResult)}}</p>
       </div>

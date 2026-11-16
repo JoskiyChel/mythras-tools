@@ -535,6 +535,11 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
 .wound-bleed path { fill:#e0785a; stroke:#2a120c; stroke-width:.8; }
 .wound-bleed .bleed-cut { fill:none; stroke:#e0785a; stroke-width:1.4; stroke-linecap:round; }
 
+/* Session-only character history controls in the masthead. */
+.history-controls { display:inline-flex; align-items:center; gap:2px; }
+.history-controls button { min-width:30px; justify-content:center; padding:4px 7px; font-size:16px; line-height:1; }
+.history-controls button:disabled { opacity:.35; }
+
 /* Skill check: select a grade, then resolve a virtual or physical d100. */
 .skill-check-dialog { width:min(100%,760px); }
 .difficulty-card {
@@ -601,4 +606,14 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
 .dice-result strong { font-size:26px; color:var(--ui-accent); line-height:1; }
 .dice-result span { font-size:12px; color:var(--ui-secondary); }
 .dice-result p { margin:0; font-size:12px; color:var(--ui-muted); }
+.dice-animation-toggle { margin-top:8px; }
+.check-die.rolling, .check-result.rolling, .dice-result.rolling { animation:dice-pop .42s ease-out; }
+@keyframes dice-pop {
+  0% { opacity:.35; transform:translateY(4px) scale(.94); }
+  60% { opacity:1; transform:translateY(0) scale(1.03); }
+  100% { opacity:1; transform:translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .check-die.rolling, .check-result.rolling, .dice-result.rolling { animation:none; }
+}
 .dice-history li { grid-template-columns:minmax(0,1fr) auto auto; }

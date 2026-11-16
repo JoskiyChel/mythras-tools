@@ -65,6 +65,29 @@ describe('Companion permanent advancement', () => {
     expect(component.injuryMark('chest')).toBeFalse();
   });
 
+  it('undoes and redoes character changes for the session', () => {
+    component.character.name = 'До';
+    component.ngDoCheck();
+    component.character.name = 'После';
+    component.ngDoCheck();
+    expect(component.canUndo).toBeTrue();
+    component.undoChange();
+    expect(component.character.name).toBe('До');
+    expect(component.canRedo).toBeTrue();
+    component.redoChange();
+    expect(component.character.name).toBe('После');
+  });
+
+  it('toggles dice animation independently of the roll mode', () => {
+    const mode = component.diceMode;
+    const initial = component.diceAnimation;
+    component.toggleDiceAnimation();
+    expect(component.diceAnimation).toBe(!initial);
+    expect(component.diceMode).toBe(mode);
+    component.toggleDiceAnimation();
+    expect(component.diceAnimation).toBe(initial);
+  });
+
   it('opens an existing effect with its full description for editing', () => {
     const description = 'Длинное описание эффекта. '.repeat(20).trim();
     const effect = {
