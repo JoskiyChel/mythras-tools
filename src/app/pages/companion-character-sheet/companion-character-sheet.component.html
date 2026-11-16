@@ -188,7 +188,7 @@
           <div class="info-zone">
             <div class="summary-zone">
               <div class="topline">
-                <div class="characteristics">
+                <div class="characteristics" [class.upgrade]="upgrade">
                   <div class="characteristic" *ngFor="let key of characteristics">
                     <span>{{key | uppercase}}</span>
                     <strong [class.highlight-result]="upgrade && draftStats[key]">{{charValue(key)}}</strong>
@@ -476,8 +476,8 @@
                   <caption>Mythras Core Rules, стр. 79 — Fatigue Levels</caption>
                   <thead><tr><th>Уровень</th><th>Навыки</th><th>Движение</th><th>Инициатива</th><th>AP</th><th>Восстановление</th></tr></thead>
                   <tbody><tr *ngFor="let rule of fatigueRules" [class.active-fatigue]="rule.level===(character.fatigueLevel || 'Fresh')">
-                    <td>{{rule.level}}</td><td>{{rule.skillGrade}}</td><td>{{rule.movement}}</td>
-                    <td>{{rule.initiative===null?'Нет действий':rule.initiative}}</td><td>{{rule.actionPoints===null?'Нет действий':rule.actionPoints}}</td><td>{{rule.recovery}}</td>
+                    <td data-label="Уровень">{{rule.level}}</td><td data-label="Навыки">{{rule.skillGrade}}</td><td data-label="Движение">{{rule.movement}}</td>
+                    <td data-label="Инициатива">{{rule.initiative===null?'Нет действий':rule.initiative}}</td><td data-label="AP">{{rule.actionPoints===null?'Нет действий':rule.actionPoints}}</td><td data-label="Восстановление">{{rule.recovery}}</td>
                   </tr></tbody>
                 </table>
                 <p class="fatigue-source">Время восстановления указано для физической усталости; применяются правила Healing Rate из книги.</p>
