@@ -666,7 +666,7 @@
         <li *ngFor="let weapon of filteredWeapons">
           <button type="button" (click)="addWeapon(weapon)">
             <span>{{weapon.name}}</span>
-            <small>Урон {{weaponPickerDamage(weapon)}} · {{weapon.size || '—'}} · {{weapon.reach || '—'}} · ENC {{weapon.enc ?? 0}}</small>
+            <small>Урон {{weaponPickerDamage(weapon)}} · {{weapon.size || '—'}} · {{weapon.reach || '—'}} · ENC {{weapon.enc}}</small>
           </button>
         </li>
         <li class="picker-empty" *ngIf="!filteredWeapons.length">Оружие не найдено.</li>
