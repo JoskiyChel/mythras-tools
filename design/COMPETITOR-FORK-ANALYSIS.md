@@ -4,7 +4,7 @@
 > Этот документ сохраняет сравнение с форком и исходные предложения.
 
 Дата проверки: 16.11.2026.
-Наша ветка: `feat/companion-spec-stage-1` (`0266083`, лист — `#/view/companion`).
+Наша ветка: `master` (фичевые коммиты слиты fast-forward в `38b49e3`; лист — `#/view/companion`).
 Их версия: репозиторий `xe-n0x/mythras-tools`, ветка `dev` (`5c98cb1`), живой сайт
 `https://xe-n0x.github.io/mythras-tools/#/view/responsive`. Workflow
 `.github/workflows/deploy.yml` собирает и публикует именно `dev`, поэтому `master`
