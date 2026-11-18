@@ -1,12 +1,14 @@
 /* Shared Agora components. Semantic selectors serve all Angular feature pages. */
 @media screen {
-  html { color-scheme: dark; background: var(--ui-canvas); }
+  html { color-scheme: var(--ui-scheme); background: var(--ui-canvas); }
   body { background: var(--ui-canvas); color: var(--ui-ink); }
   a { color: var(--ui-accent-hover); }
   a:hover { color: var(--ui-hover-ink); }
   ::placeholder { color: var(--ui-muted); opacity: 1; }
-  select, option { color-scheme: dark; }
+  select, option { color-scheme: var(--ui-scheme); }
   option { background: var(--ui-surface); color: var(--ui-ink); }
+  option:checked { background: var(--ui-choice-active); color: var(--ui-choice-ink); }
+  ::selection { background: var(--ui-choice-active); color: var(--ui-choice-ink); }
   .app-shell { background: var(--ui-canvas); }
   .app-container { max-width: 1440px; padding: 32px; }
   .app-card-surface, .mat-mdc-card, .mat-expansion-panel {
@@ -30,6 +32,12 @@
   .mat-mdc-button-base { font-size: 14px; letter-spacing: normal !important; border-radius: var(--ui-radius-control) !important; }
   .mat-mdc-outlined-button { border-color: var(--ui-border) !important; }
   .mat-mdc-raised-button, .mat-mdc-unelevated-button { box-shadow: none !important; }
+  html:root .mat-mdc-raised-button.mat-primary:not([disabled]) {
+    --mdc-protected-button-label-text-color: var(--ui-on-dark);
+  }
+  html:root .mat-mdc-unelevated-button.mat-primary:not([disabled]) {
+    --mdc-filled-button-label-text-color: var(--ui-on-dark);
+  }
   .mat-icon { color: inherit; }
   .mat-mdc-button-base .mat-icon { width: 18px; height: 18px; font-size: 18px; }
   a, button, input, textarea, select, summary {
@@ -41,13 +49,37 @@
   a { text-underline-offset: 3px; }
   .modal-opener { color: var(--ui-accent); text-decoration-color: var(--ui-border); }
   .modal-opener:hover { text-decoration-color: currentColor; }
-  .mat-mdc-form-field { --mdc-filled-text-field-container-color: var(--ui-raised); }
+  html:root .mat-mdc-card {
+    --mdc-elevated-card-container-color: var(--ui-surface);
+    --mdc-outlined-card-container-color: var(--ui-surface);
+  }
+  .mat-mdc-form-field {
+    --mdc-filled-text-field-container-color: var(--ui-raised);
+    .mdc-text-field:not(.mdc-text-field--disabled) .mdc-floating-label { color: var(--ui-secondary); }
+    .mdc-text-field--focused:not(.mdc-text-field--disabled) .mdc-floating-label { color: var(--ui-ink); }
+    .mdc-text-field--invalid:not(.mdc-text-field--disabled) .mdc-floating-label { color: var(--ui-danger); }
+  }
   .mat-mdc-select-panel, .mat-mdc-menu-panel, .mat-mdc-dialog-container .mdc-dialog__surface {
     background: var(--ui-surface); color: var(--ui-ink);
   }
-  .mat-mdc-option { color: var(--ui-ink); }
-  .mat-mdc-option:hover, .mat-mdc-option.mat-mdc-option-active,
-  .mat-mdc-option.mdc-list-item--selected { background: var(--ui-hover); color: var(--ui-hover-ink); }
+  .cdk-overlay-container .mat-mdc-option:not(.mdc-list-item--disabled) {
+    --option-ink: var(--ui-ink);
+    color: var(--option-ink);
+
+    // Material sets a separate color on the selected label.
+    .mdc-list-item__primary-text { color: var(--option-ink) !important; }
+    &.mdc-list-item--selected { background: var(--ui-accent-soft) !important; }
+    &:hover, &:focus-visible, &.mat-mdc-option-active {
+      --option-ink: var(--ui-choice-ink);
+      background: var(--ui-choice-active) !important;
+    }
+  }
+  .mat-mdc-menu-panel .mat-mdc-menu-item:not([disabled]) {
+    &:hover, &:focus-visible, &.cdk-keyboard-focused {
+      background: var(--ui-hover);
+      color: var(--ui-hover-ink);
+    }
+  }
   .info-modal-title { font-family: var(--ui-display) !important; font-size: 28px !important; color: var(--ui-ink); }
   .info-modal-content, .info-modal-content p, .info-modal-content li { color: var(--ui-ink); line-height: 1.65; }
   .info-modal-actions { background: var(--ui-canvas); border-color: var(--ui-border); }

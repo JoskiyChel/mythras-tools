@@ -1,1 +1,10 @@
+<aside class="site-preferences" aria-label="Оформление сайта">
+  <div class="site-theme">
+    <label for="site-theme-select">Тема оформления</label>
+    <select id="site-theme-select" #themeSelect [value]="theme.current" (change)="theme.select(themeSelect.value)">
+      <option value="terracotta">Красная керамика</option>
+      <option value="tennla">Теннла</option>
+    </select>
+  </div>
+</aside>
 <router-outlet></router-outlet>

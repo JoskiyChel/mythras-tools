@@ -1,5 +1,6 @@
 /* Direction A: red-figure pottery. Black glaze, terracotta clay, bronze. */
 :root {
+  --ui-scheme: dark;
   --ui-canvas: #17110d;
   --ui-surface: #1f1813;
   --ui-raised: #2a1e16;
@@ -22,6 +23,8 @@
   --ui-warning: #d9a05b;
   --ui-warning-soft: #33261a;
   --ui-focus: #d9a05b;
+  --ui-choice-active: #60381f;
+  --ui-choice-ink: #fff1d7;
   --ui-font: Roboto, 'Helvetica Neue', sans-serif;
   --ui-display: 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
   --ui-radius-control: 4px;
@@ -49,15 +52,15 @@
 
 /* Tennla palette adapted from xe-n0x/mythras-tools, dev (4b8e741). */
 html[data-mythras-theme='tennla'] {
-  color-scheme: light;
+  --ui-scheme: light;
   --ui-canvas: #f6f3eb;
   --ui-surface: #fffefa;
   --ui-raised: #eee9dd;
   --ui-hover: #d6e5e3;
-  --ui-hover-ink: #336675;
+  --ui-hover-ink: #244b53;
   --ui-ink: #243337;
   --ui-secondary: #405450;
-  --ui-muted: #596964;
+  --ui-muted: #4c5d57;
   --ui-border: #d9d6ca;
   --ui-accent: #295562;
   --ui-accent-hover: #336675;
@@ -72,6 +75,8 @@ html[data-mythras-theme='tennla'] {
   --ui-warning: #795426;
   --ui-warning-soft: #f4ebdb;
   --ui-focus: #295562;
+  --ui-choice-active: #295562;
+  --ui-choice-ink: #fffefa;
   --ui-display: Georgia, 'Times New Roman', serif;
   --ui-shadow: 0 1px 2px #2e333012, 0 4px 14px #463e3210;
   --tennla-bronze: #a67a43;

@@ -21,3 +21,20 @@ $theme: mat.define-dark-theme((
 ));
 @include mat.core();
 @include mat.all-component-themes($theme);
+
+$sea: (
+  50: #f1f6f4, 100: #e4edeb, 200: #cadad6, 300: #a6c4be,
+  400: #7fa8a1, 500: #5c8985, 600: #3c6b70, 700: #295562,
+  800: #244852, 900: #1b3843,
+  contrast: (50: #243337, 100: #243337, 200: #243337, 300: #243337,
+    400: #243337, 500: #15282c, 600: #fffefa, 700: #fffefa, 800: #fffefa, 900: #fffefa)
+);
+$tennla: mat.define-light-theme((
+  color: (primary: mat.define-palette($sea, 700), accent: mat.define-palette($bronze, 700), warn: mat.define-palette(mat.$red-palette, 800))
+));
+
+@media screen {
+  html[data-mythras-theme='tennla'] {
+    @include mat.all-component-colors($tennla);
+  }
+}

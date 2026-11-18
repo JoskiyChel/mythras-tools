@@ -36,7 +36,7 @@ import {
   skillGroups, fatigueRule, canAct, changeLocationHp, findTraditionSkill, shapingPointMaximum,
   visibleProfessionalSkills, severity, difficultyStep, jumpDistance,
   DIFFICULTY_STEPS, DifficultyStep, CheckThresholds, checkThresholds, augmentingBonus,
-  WOUND_TYPES, MAJOR_WOUND_TYPES, locationInjuries, setLocationInjuries, magicModifier,
+  WOUND_TYPES, locationInjuries, setLocationInjuries, magicModifier,
   theismPoolLimit, theismIntensity, animismMaxSpiritPow, animismSpiritLimit,
   animismSpiritDamage, mysticismTotalIntensity, mysticismTalentIntensity, mysticismTrainedLimit,
   sorceryIntensity, sorceryMemoryLimit, folkMagicStartingSpells,
@@ -245,6 +245,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   hpAmount=1;
   openedWeapon=-1;
   openedSpell='';
+  openedSpirit: SpiritRecord | null = null;
   upgrade=false;
   draftStats:Partial<Record<CharacteristicKey,number>>={};
   readonly draftSkills=new Map<Skill,number>();
@@ -802,7 +803,9 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   hp(key:HitLocation):number {return displayedLocationHp(this.character,key,this.upgrade?this.draftStats:{});}
   hpColour(key:HitLocation):string {
     const max=this.maxHp(key),n=this.hp(key);
-    const major=[86,32,28], serious=[154,64,44], healthy=[198,106,63];
+    const [major, serious, healthy] = this.theme.current === 'tennla'
+      ? [[100, 47, 55], [161, 95, 70], [161, 191, 183]]
+      : [[86, 32, 28], [154, 64, 44], [198, 106, 63]];
     const mix=(from:number[],to:number[],t:number)=>'rgb('+from.map((value,i)=>Math.round(value+(to[i]-value)*t)).join(',')+')';
     if(max<=0)return mix(major,serious,.5);
     // Continuous gradient: major at −max, serious at 0, clay at max.
@@ -818,6 +821,12 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   woundAnchorY(loc:LocationDisplay):number {
     return this.hasWoundType(loc.key,'Отсечена')&&loc.stubAnchorY!==undefined
       ? loc.stubAnchorY : loc.anchorY;
+  }
+  woundImpale(loc: LocationDisplay): LocationGeometry['impale'] {
+    if (!this.hasWoundType(loc.key, 'Отсечена') || loc.stubAnchorY === undefined) return loc.impale;
+    const [startX, startY, endX, endY] = loc.impale;
+    const offset = loc.stubAnchorY - endY;
+    return [startX, startY + offset, endX, endY + offset];
   }
   woundScarPath(loc:LocationDisplay):string {
     return loc.scar ?? 'M-14 -4L12 5M-10 2L8 9';
@@ -840,16 +849,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
       this.removeInjuryEffect(location,type);
       return;
     }
-    let next=[...current];
-    if((MAJOR_WOUND_TYPES as readonly string[]).includes(type)){
-      // Dismemberment, maim and impalement are mutually exclusive on one location.
-      for(const legacy of current.filter(value=>(MAJOR_WOUND_TYPES as readonly string[]).includes(value))){
-        this.removeInjuryEffect(location,legacy);
-      }
-      next=next.filter(value=>!(MAJOR_WOUND_TYPES as readonly string[]).includes(value));
-    }
-    next.push(type);
-    setLocationInjuries(this.character,location,next);
+    setLocationInjuries(this.character, location, [...current, type]);
     this.openInjuryEffect(location,type);
   }
   get selectedLabel():string {return hitLocationRule(this.selectedLocation).labelRu;}
@@ -1061,7 +1061,10 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     this.spiritDraft = emptySpirit();
     this.addingSpirit = false;
   }
-  removeSpirit(index: number): void { this.character.magic.spiritRecords?.splice(index, 1); }
+  removeSpirit(index: number): void {
+    if (this.openedSpirit === this.spirits[index]) this.openedSpirit = null;
+    this.character.magic.spiritRecords?.splice(index, 1);
+  }
 
   get traditions():Tradition[] {
     const m=this.character.magic;

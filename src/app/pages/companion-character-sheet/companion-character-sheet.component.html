@@ -16,10 +16,6 @@
       <a routerLink="/view">PDF / Печать</a>
       <button type="button" (click)="editInBuilder()">Конструктор</button>
       <button type="button" (click)="exportJson()">Сохранить JSON</button>
-      <select class="theme-select" aria-label="Тема оформления" [ngModel]="theme.current" (ngModelChange)="theme.select($event)">
-        <option value="terracotta">Красная керамика</option>
-        <option value="tennla">Теннла</option>
-      </select>
     </div>
   </header>
   <div class="save-status" role="status">{{storage.error || 'Изменения сохраняются автоматически в этом браузере.'}}</div>
@@ -134,9 +130,9 @@
             <div class="plate-row">
             <svg class="body-svg" viewBox="0 0 300 470" aria-label="Семь локаций тела — выберите часть фигуры">
               <defs>
-                <linearGradient id="clayBody" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#d98a5b"/>
-                  <stop offset="1" stop-color="#b4552f"/>
+                <linearGradient id="bodyVolume" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" class="body-light"/>
+                  <stop offset="1" class="body-shadow"/>
                 </linearGradient>
                 <filter id="maimEdge" x="-12%" y="-12%" width="124%" height="124%">
                   <feTurbulence type="fractalNoise" baseFrequency="0.11" numOctaves="2" seed="7" result="noise"/>
@@ -144,11 +140,11 @@
                 </filter>
                 <marker id="arrowHead" viewBox="0 0 9 9" refX="9" refY="4.5" markerWidth="9" markerHeight="9"
                   markerUnits="userSpaceOnUse" orient="auto">
-                  <path d="M0 0L9 4.5L0 9L2.5 4.5Z" fill="#d9a05b" stroke="#120d0a" stroke-width=".6"/>
+                  <path d="M0 0L9 4.5L0 9L2.5 4.5Z" class="arrow-head" stroke-width=".6"/>
                 </marker>
                 <marker id="arrowFletch" viewBox="0 0 12 12" refX="12" refY="6" markerWidth="12" markerHeight="12"
                   markerUnits="userSpaceOnUse" orient="auto">
-                  <path d="M12 6L3 1M12 6L3 11M12 6L7 6" fill="none" stroke="#d9a05b"
+                  <path d="M12 6L3 1M12 6L3 11M12 6L7 6" class="arrow-fletch" fill="none"
                     stroke-width="1.4" stroke-linecap="round"/>
                 </marker>
               </defs>
@@ -166,7 +162,7 @@
                 [attr.aria-pressed]="selectedLocation===loc.key">
                 <path class="body-location" [attr.d]="partPath(loc)" [attr.fill]="hpColour(loc.key)"
                   [attr.filter]="hasWoundType(loc.key,'Увечье') ? 'url(#maimEdge)' : null"/>
-                <path class="body-volume" [attr.d]="partPath(loc)" fill="url(#clayBody)" opacity=".22" pointer-events="none"
+                <path class="body-volume" [attr.d]="partPath(loc)" fill="url(#bodyVolume)" opacity=".22" pointer-events="none"
                   [attr.filter]="hasWoundType(loc.key,'Увечье') ? 'url(#maimEdge)' : null"/>
                 <path *ngIf="loc.key==='head'" class="body-hair" d="M126 39c2-15 12-25 24-25s22 10 24 25c-6-7-14-10-24-10s-18 3-24 10Z"/>
                 <ellipse *ngIf="loc.key==='rightArm' && !hasWoundType(loc.key,'Отсечена')" class="body-hand"
@@ -178,11 +174,11 @@
                 <path *ngIf="loc.key==='leftLeg' && !hasWoundType(loc.key,'Отсечена')" class="body-foot"
                   d="M168 452h26l4 12h-34Z" [attr.fill]="hpColour(loc.key)"/>
                 <path *ngIf="hasWoundType(loc.key,'Отсечена') && loc.seam" class="wound-seam" [attr.d]="loc.seam"/>
-                <g *ngIf="hasWoundType(loc.key,'Пронзена')" class="wound-impale" aria-hidden="true">
-                  <circle class="impale-wound" [attr.cx]="loc.impale[2]" [attr.cy]="loc.impale[3]" r="4.5"/>
-                  <line [attr.x1]="loc.impale[0]" [attr.y1]="loc.impale[1]" [attr.x2]="loc.impale[2]" [attr.y2]="loc.impale[3]"
+                <g *ngIf="hasWoundType(loc.key,'Пронзена') && woundImpale(loc) as impale" class="wound-impale" aria-hidden="true">
+                  <circle class="impale-wound" [attr.cx]="impale[2]" [attr.cy]="impale[3]" r="4.5"/>
+                  <line [attr.x1]="impale[0]" [attr.y1]="impale[1]" [attr.x2]="impale[2]" [attr.y2]="impale[3]"
                     marker-start="url(#arrowFletch)" marker-end="url(#arrowHead)"/>
-                  <circle [attr.cx]="loc.impale[0]" [attr.cy]="loc.impale[1]" r="2.2"/>
+                  <circle [attr.cx]="impale[0]" [attr.cy]="impale[1]" r="2.2"/>
                 </g>
                 <g *ngIf="hasWoundType(loc.key,'Кровотечение')" class="wound-bleed" aria-hidden="true"
                   [attr.transform]="'translate(' + loc.anchorX + ',' + woundAnchorY(loc) + ')'">
@@ -449,15 +445,24 @@
                   <tbody><tr><td>1–6</td><td>0</td></tr><tr><td>7–12</td><td>1</td></tr><tr><td>13–18</td><td>2</td></tr></tbody>
                 </table>
                 <small>Дальше Intensity растёт на 1 за каждые следующие 6 POW.</small>
-                <ul class="spirit-list" *ngIf="spirits.length">
-                  <li *ngFor="let spirit of spirits; let index = index">
-                    <strong>{{spirit.name}}</strong> · {{spirit.state === 'bound' ? 'Связанный' : 'Известный'}}
-                    <span *ngIf="spirit.vessel"> · {{spirit.vessel}}</span>
-                    <span *ngIf="spirit.abilities"> · {{spirit.abilities}}</span>
-                    <span *ngIf="spirit.resources"> · {{spirit.resources}}</span>
-                    <button class="quiet compact" type="button" (click)="removeSpirit(index)" [attr.aria-label]="'Убрать запись о духе ' + spirit.name">Убрать запись</button>
-                  </li>
-                </ul>
+                <div class="spell spirit-card" *ngFor="let spirit of spirits; let index = index">
+                  <button type="button" [attr.aria-expanded]="openedSpirit === spirit"
+                    [attr.aria-controls]="'companion-spirit-' + index"
+                    (click)="openedSpirit = openedSpirit === spirit ? null : spirit">
+                    {{spirit.name}}
+                    <span class="material-icons ui-icon" aria-hidden="true">{{openedSpirit === spirit ? 'expand_less' : 'expand_more'}}</span>
+                  </button>
+                  <div class="spell-description" [id]="'companion-spirit-' + index" [hidden]="openedSpirit !== spirit">
+                    <dl class="spirit-details">
+                      <div><dt>Связь</dt><dd>{{spirit.state === 'bound' ? 'Связанный' : 'Известный'}}</dd></div>
+                      <div *ngIf="spirit.vessel"><dt>Фетиш или носитель</dt><dd>{{spirit.vessel}}</dd></div>
+                      <div *ngIf="spirit.abilities"><dt>Способности</dt><dd>{{spirit.abilities}}</dd></div>
+                      <div *ngIf="spirit.resources"><dt>Ресурсы</dt><dd>{{spirit.resources}}</dd></div>
+                    </dl>
+                    <button class="quiet compact" type="button" (click)="removeSpirit(index)"
+                      [attr.aria-label]="'Убрать запись о духе ' + spirit.name">Убрать запись</button>
+                  </div>
+                </div>
                 <button *ngIf="!addingSpirit" type="button" class="quiet compact" (click)="addingSpirit = true">＋ Дух</button>
                 <form *ngIf="addingSpirit" class="draft-entry" (ngSubmit)="addSpirit()">
                   <label>Имя <input name="spiritName" [(ngModel)]="spiritDraft.name" required></label>

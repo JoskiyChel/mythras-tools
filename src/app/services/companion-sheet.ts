@@ -79,7 +79,6 @@ export function companionState(character: CompanionCharacter): CompanionState {
 
 /** Physical traumas are mutually exclusive; bleeding and scars may accompany any of them. */
 export const WOUND_TYPES = ['Отсечена','Увечье','Пронзена','Кровотечение','Шрам'] as const;
-export const MAJOR_WOUND_TYPES = ['Отсечена','Увечье','Пронзена'] as const;
 
 /** Injuries are stored as an array per location; a legacy save may hold one string. */
 export function locationInjuries(character: CompanionCharacter, location: HitLocation): string[] {

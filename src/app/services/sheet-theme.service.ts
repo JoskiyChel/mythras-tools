@@ -21,7 +21,7 @@ export class SheetThemeService {
 
   get current(): SheetTheme { return this.selected; }
 
-  select(theme: SheetTheme): void {
+  select(theme: string): void {
     if (theme !== 'terracotta' && theme !== 'tennla') return;
     this.selected = theme;
     this.apply();

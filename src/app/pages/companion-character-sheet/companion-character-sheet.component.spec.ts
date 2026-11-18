@@ -137,7 +137,7 @@ describe('Companion permanent advancement', () => {
     expect(component.diceHistory.length).toBe(0);
   });
 
-  it('makes physical traumas exclusive, links them to effects and removes both sides', () => {
+  it('combines physical traumas, retains their modifiers and removes each independently', () => {
     component.character.companion = {};
     component.selectLocation('leftArm');
     const baseMax = component.maxHp('leftArm');
@@ -155,15 +155,26 @@ describe('Companion permanent advancement', () => {
     expect(component.maxHp('leftArm')).toBe(baseMax - 2);
 
     component.toggleInjury('Отсечена');
-    expect(component.injuryText('leftArm')).toBe('Отсечена');
-    expect(component.maxHp('leftArm')).toBe(baseMax);
-    expect(component.effects.some(effect => effect.injury?.type === 'Увечье')).toBeFalse();
+    component.cancelEffect();
+    component.toggleInjury('Пронзена');
+    component.cancelEffect();
+    component.toggleInjury('Кровотечение');
+    component.cancelEffect();
+    component.toggleInjury('Шрам');
+    component.cancelEffect();
+    expect(component.injuryText('leftArm')).toBe('Увечье, Отсечена, Пронзена, Кровотечение, Шрам');
+    expect(component.maxHp('leftArm')).toBe(baseMax - 2);
+    expect(component.selectedInjuryEffects.length).toBe(5);
     const severed = component.effects.find(effect => effect.injury?.type === 'Отсечена')!;
     expect(severed.name).toBe('Отсечённая левая рука');
-    component.cancelEffect();
+    const arm = component.locations.find(loc => loc.key === 'leftArm')!;
+    expect(component.woundImpale(arm)[3]).toBe(arm.stubAnchorY!);
 
     component.removeEffect(severed.id);
-    expect(component.injuryText('leftArm')).toBe('');
+    expect(component.injuryText('leftArm')).toBe('Увечье, Пронзена, Кровотечение, Шрам');
+    expect(component.woundImpale(arm)).toEqual(arm.impale);
+    component.toggleInjury('Увечье');
+    expect(component.maxHp('leftArm')).toBe(baseMax);
   });
 
   it('previews derived attribute changes during Становление', () => {
