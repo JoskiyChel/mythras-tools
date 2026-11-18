@@ -1,3 +1,8 @@
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { Equipment } from './../../model/equipment';
 import { Component, Input } from '@angular/core';
 import { ARMOUR_PRESETS, ARMOUR_BASE_MATERIALS as baseMaterials, ARMOUR_CONSTRUCTIONS as constructions, ARMOUR_MATERIALS as materials, applyArmourPreset } from '../../services/armour-catalog';
@@ -5,6 +10,8 @@ import { resetObject } from 'src/app/services/common.service';
 
 @Component({
   selector: 'equipment',
+  standalone: true,
+  imports: [CommonModule, FormsModule, MatFormFieldModule, MatInputModule, MatSelectModule],
   templateUrl: './equipment-edit.component.html',
   styleUrls: ['./equipment-edit.component.scss']
 })

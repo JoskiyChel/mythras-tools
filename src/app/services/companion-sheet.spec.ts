@@ -3,7 +3,7 @@ import { hydrateCharacter } from './character-format';
 import { getCurrentHp } from './hit-points';
 import {
   CompanionCharacter, currentCharacteristic, skillTotal, damageModifier,
-  companionState, maxLocationHp, skillGroups, movementSummary, modifierTotal,
+  companionState, maxLocationHp, skillGroups, movementSummary, jumpDistance, modifierTotal,
   armourPenalty, fatigueRule, attributeTotal, displayedLocationHp, initializePristineHitPoints, movement,
   changeLocationHp, findTraditionSkill, shapingPointMaximum,
   augmentingBonus, checkThresholds, difficultyStep, DIFFICULTY_STEPS,
@@ -113,7 +113,7 @@ describe('Companion sheet / legacy character compatibility', () => {
     expect(next.companion?.gifts?.[0].name).toBe('Gift');
   });
 
-  it('applies fatigue movement penalties and half armour penalty to jumps', () => {
+  it('applies fatigue movement penalties and immobility', () => {
     const c=character();
     const fresh=movementSummary(c);
     c.fatigueLevel='Tired';
@@ -159,20 +159,48 @@ describe('Companion sheet / legacy character compatibility', () => {
     const roundTripped=hydrateCharacter(JSON.parse(JSON.stringify(c))) as CompanionCharacter;
     expect(roundTripped.currentHitPoints?.leftArm).toBe(-5);
   });
-  it('calculates swimming from Swim, honours effects, preview and immobility', () => {
-    const c=character();
-    const swim=c.skills.skills.find(s=>s.name==='Swim')!;
-    const base=skillTotal(c,swim);
-    swim.extraBonus=(Number(swim.extraBonus)||0)+40-base;
-    expect(movementSummary(c).swimming).toBe(8);
-    companionState(c).effects=[{id:'swim',name:'Swim boost',duration:'',modifiers:[{kind:'skill',key:'Swim',amount:20}]}];
-    expect(movementSummary(c).swimming).toBe(9);
-    expect(movementSummary(c,{}, {swim:20}).swimming).toBe(10);
-    expect(movementSummary(c,{str:20}).swimSkill).toBeGreaterThan(movementSummary(c).swimSkill);
-    c.fatigueLevel='Tired';
-    expect(movementSummary(c).swimming).toBe(8);
-    c.fatigueLevel='Incapacitated';
+  it('calculates swimming from Swim, honours effects, preview and armour', () => {
+    const c = character();
+    const swim = c.skills.skills.find(skill => skill.name === 'Swim')!;
+    swim.extraBonus = (Number(swim.extraBonus) || 0) + 40 - skillTotal(c, swim);
+    expect(movementSummary(c).swimming).toBe(3); // ceil((6 + 2) / 2) − 1
+    companionState(c).effects = [{id: 'swim', name: 'Swim boost', duration: '', modifiers: [{kind: 'skill', key: 'Swim', amount: 20}]}];
+    expect(movementSummary(c).swimming).toBe(4);
+    expect(movementSummary(c, {}, {swim: 20}).swimSkill).toBe(80);
+    expect(movementSummary(c, {str: 20}).swimSkill).toBeGreaterThan(movementSummary(c).swimSkill);
+    c.equipment.armorPenalty = 6;
+    expect(movementSummary(c).swimming).toBe(-1);
+    c.fatigueLevel = 'Incapacitated';
     expect(movementSummary(c).swimming).toBe(0);
+  });
+
+  it('uses height, full 20% Athletics, a run-up and rounded armour penalty for each jump', () => {
+    const base = {walking: 6, heightMetres: 1.8, athletics: 47, armourPenalty: 0};
+    expect(jumpDistance(base, 'horizontal', true)).toBeCloseTo(5.6);
+    expect(jumpDistance(base, 'vertical', true)).toBeCloseTo(1.3);
+    expect(jumpDistance(base, 'horizontal', false)).toBeCloseTo(1.8);
+    expect(jumpDistance(base, 'vertical', false)).toBeCloseTo(0.45);
+    const armoured = {...base, armourPenalty: 3};
+    expect(jumpDistance(armoured, 'horizontal', true)).toBeCloseTo(3.6);
+    expect(jumpDistance(armoured, 'horizontal', false)).toBeCloseTo(0.8);
+    expect(jumpDistance(armoured, 'vertical', false)).toBe(0);
+    expect(jumpDistance(armoured, 'vertical', true, true)).toBeCloseTo(0.3);
+    expect(jumpDistance({...base, heightMetres: 0}, 'horizontal', true)).toBeNull();
+  });
+
+  it('applies the run and sprint bonus per full 25% Athletics and scales armour by slope', () => {
+    const c = character();
+    const athletics = c.skills.skills.find(skill => skill.name === 'Athletics')!;
+    const start = skillTotal(c, athletics);
+    const at49 = movementSummary(c, {}, {athletics: 49 - start});
+    const at50 = movementSummary(c, {}, {athletics: 50 - start});
+    expect(at50.running - at49.running).toBe(1.5);
+    expect(at50.sprinting - at49.sprinting).toBe(5);
+    expect(at50.runningWithoutBonus).toBe(17);
+    expect(at50.sprintingWithoutBonus).toBe(29);
+    c.equipment.armorPenalty = 3;
+    expect(movementSummary(c).climb).toEqual({easy: 4, steep: 3, sheer: 0});
+    expect(movementSummary(c).walking).toBe(6);
   });
 
   it('rounds shaping capacity up at each ten-percent boundary', () => {

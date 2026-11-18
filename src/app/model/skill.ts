@@ -1,9 +1,12 @@
+export type SkillCategory = 'standard' | 'professional' | 'magic';
+
 export class Skill {
     name : string;
     /** Stable identity, assigned only when several skills share one name. */
     id? : string;
     professional : boolean;
     custom?: boolean;
+    category?: SkillCategory;
     force : boolean;
     base : string[];
     cultureBonus : number;

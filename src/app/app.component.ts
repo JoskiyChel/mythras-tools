@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { SheetThemeService } from './services/sheet-theme.service';
 import { AppInstallService } from './services/app-install.service';
 
 @Component({
@@ -7,6 +8,6 @@ import { AppInstallService } from './services/app-install.service';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-  constructor(public install: AppInstallService) {}
+  constructor(public install: AppInstallService, public theme: SheetThemeService) {}
   title = 'mythras-tools';
 }

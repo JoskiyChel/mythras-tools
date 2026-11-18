@@ -300,7 +300,6 @@ import { RouterModule } from '@angular/router';
     RankTableComponent,
     FolkMagicComponent,
     EquipmentComponent,
-    EquipmentEditComponent,
     WeaponEditComponent,
     ItemEditComponent,
     AgeBandComponent,
@@ -316,6 +315,7 @@ import { RouterModule } from '@angular/router';
     ResponsiveCharacterViewerComponent
   ],
   imports: [
+    EquipmentEditComponent,
     CustomizationComponent,
     SkillActionsComponent,
     CommonModule,

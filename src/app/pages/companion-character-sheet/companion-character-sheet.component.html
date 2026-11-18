@@ -1,6 +1,9 @@
 <div class="companion-shell" *ngIf="character">
   <header class="masthead">
-    <div class="masthead-brand">Mythras <small>Companion</small></div>
+    <div class="masthead-brand" *ngIf="theme.current === 'terracotta'; else tennlaBrand">Mythras <small>Companion</small></div>
+    <ng-template #tennlaBrand>
+      <div class="masthead-brand tennla-brand"><span class="tennla-seal" aria-hidden="true"></span><div>Теннла <small>Mythras Companion</small></div></div>
+    </ng-template>
     <div class="masthead-tools">
       <span class="history-controls" role="group" aria-label="История изменений">
         <button type="button" (click)="undoChange()" [disabled]="!canUndo" [title]="canUndo ? 'Отменить: ' + lastHistoryLabel : 'Отменять нечего'" aria-label="Отменить последнее изменение">↶</button>
@@ -13,6 +16,10 @@
       <a routerLink="/view">PDF / Печать</a>
       <button type="button" (click)="editInBuilder()">Конструктор</button>
       <button type="button" (click)="exportJson()">Сохранить JSON</button>
+      <select class="theme-select" aria-label="Тема оформления" [ngModel]="theme.current" (ngModelChange)="theme.select($event)">
+        <option value="terracotta">Красная керамика</option>
+        <option value="tennla">Теннла</option>
+      </select>
     </div>
   </header>
   <div class="save-status" role="status">{{storage.error || 'Изменения сохраняются автоматически в этом браузере.'}}</div>
@@ -33,16 +40,51 @@
       <div class="panel-content">
         <p class="minor-note" *ngIf="upgrade">Становление: прошлое → прибавка → итог. Зелёный/красный — прямое изменение, ↗ — пересчёт.</p>
         <input class="search-field" type="search" [(ngModel)]="query" aria-label="Поиск навыка" placeholder="Поиск навыка…">
-        <div class="add-skill" *ngIf="upgrade">
-          <label class="field-label" for="companion-new-skill">Добавить навык</label>
-          <div class="add-skill-row">
-            <select id="companion-new-skill" [(ngModel)]="newSkillName" aria-label="Новый профессиональный навык">
-              <option value="">Выберите навык…</option>
-              <option *ngFor="let skill of addableSkills" [value]="skill.name">{{skill.name}}</option>
+        <div class="add-skill draft-entry" *ngIf="upgrade">
+          <label>Добавить к становлению
+            <select [(ngModel)]="draftEntryKind">
+              <option value="catalogue">Навык из справочника</option>
+              <option value="passion">Страсть</option>
+              <option value="language">Язык</option>
+              <option value="custom">Пользовательский навык</option>
             </select>
-            <button type="button" class="quiet compact" [disabled]="!newSkillName" (click)="addDraftSkill()">Добавить</button>
-          </div>
-          <small class="add-skill-note" *ngIf="!addableSkills.length">Все навыки из справочника уже есть у персонажа.</small>
+          </label>
+          <ng-container [ngSwitch]="draftEntryKind">
+            <div class="add-skill-row" *ngSwitchCase="'catalogue'">
+              <select [(ngModel)]="newSkillName" aria-label="Новый профессиональный навык">
+                <option value="">Выберите навык…</option>
+                <option *ngFor="let skill of addableSkills" [value]="skill.name">{{skill.name}}</option>
+              </select>
+              <button type="button" class="quiet compact" [disabled]="!newSkillName" (click)="addDraftSkill()">Добавить</button>
+            </div>
+            <ng-container *ngSwitchCase="'passion'">
+              <label>Название страсти <input type="text" [(ngModel)]="passionName"></label>
+              <label>Значение (%) <input type="number" min="0" step="1" [(ngModel)]="passionValue"></label>
+              <button type="button" class="quiet compact" [disabled]="!canAddPassion" (click)="addDraftPassion()">Добавить страсть</button>
+            </ng-container>
+            <ng-container *ngSwitchDefault>
+              <label>{{draftEntryKind === 'language' ? 'Название языка' : 'Название навыка'}}
+                <input type="text" [(ngModel)]="customSkillName">
+              </label>
+              <ng-container *ngIf="draftEntryKind === 'custom'">
+                <label>Тип навыка
+                  <select [(ngModel)]="customSkillCategory">
+                    <option value="standard">Стандартный</option>
+                    <option value="professional">Профессиональный</option>
+                    <option value="magic">Магический</option>
+                  </select>
+                </label>
+                <div class="draft-bases">
+                  <label *ngFor="let i of [0, 1]">База {{i + 1}}
+                    <select [(ngModel)]="customSkillBase[i]">
+                      <option *ngFor="let key of characteristics" [value]="key">{{key | uppercase}}</option>
+                    </select>
+                  </label>
+                </div>
+              </ng-container>
+              <button type="button" class="quiet compact" [disabled]="!canCreateSkill" (click)="createDraftSkill()">Добавить</button>
+            </ng-container>
+          </ng-container>
         </div>
         <section class="skill-group" *ngFor="let group of groups;trackBy:trackGroup">
           <h3 *ngIf="group.skills.length">{{group.name}}</h3>
@@ -66,7 +108,7 @@
         <section class="skill-group" *ngIf="visiblePassions.length">
           <h3>Страсти</h3>
           <div class="skill-row" *ngFor="let passion of visiblePassions">
-            <span class="skill-name readonly">{{passion.passion || 'Не задана'}}</span>
+            <span class="skill-name readonly">{{passion.passion || 'Не задана'}} <small *ngIf="draftPassions.includes(passion)">Новая</small></span>
             <span class="value-old">{{passion.modifierNumber != null ? passion.modifierNumber + '%' : (passion.modifier || '—')}}</span>
           </div>
         </section>
@@ -167,12 +209,15 @@
                 <span class="loc-roll">d20 {{loc.roll}}</span>
                 <span class="loc-hp">{{hp(loc.key)}}/{{maxHp(loc.key)}}</span>
                 <span class="loc-ap">AP {{ap(loc.key)}}</span>
+                <small class="wound-status" *ngIf="woundSeverity(loc.key) !== 'healthy'" [class]="woundSeverity(loc.key)">{{woundLabels[woundSeverity(loc.key)]}}</small>
                 <span class="loc-injury" *ngIf="injuryMark(loc.key)">{{injuryText(loc.key)}}</span>
               </button>
             </div>
             </div>
             <div class="location-editor">
-              <span class="loc-title">{{selectedLabel}}</span>
+              <span class="loc-title">{{selectedLabel}}
+                <small class="wound-status" aria-live="polite" [class]="woundSeverity(selectedLocation)">{{woundLabels[woundSeverity(selectedLocation)]}}</small>
+              </span>
               <div class="hp-edit-controls">
                 <button type="button" (click)="adjustSelectedHp(-1)" [disabled]="!hpAmountValid || upgrade" [attr.aria-label]="'Нанести ' + hpAmount + ' урона: ' + selectedLocation">− HP</button>
                 <input id="companion-hp-amount" type="number" min="1" max="999" step="1" [(ngModel)]="hpAmount" [attr.aria-invalid]="!hpAmountValid" aria-label="HP за нажатие" aria-describedby="companion-hp-amount-help"/>
@@ -188,6 +233,14 @@
                 (click)="toggleInjury(type)">{{type}}</button>
               <span class="injury-none" *ngIf="!injuryMark(selectedLocation)">Повреждений нет</span>
             </div>
+            <section class="injury-effects" *ngIf="selectedInjuryEffects.length">
+              <h3>Эффекты ранений · {{selectedLabel}}</h3>
+              <div class="effects-list">
+                <ng-container *ngFor="let effect of selectedInjuryEffects">
+                  <ng-container *ngTemplateOutlet="effectEntry; context: {$implicit: effect}"></ng-container>
+                </ng-container>
+              </div>
+            </section>
           </div>
 
           <!-- Numbers and effects: one column, no dead space under the plate -->
@@ -216,7 +269,7 @@
                 <div class="attribute metric"><small>Experience Modifier</small><strong>{{attr('expMod') >= 0 ? '+' : ''}}{{attr('expMod')}}<span class="attr-delta" [class.negative]="attrDelta('expMod') < 0" *ngIf="upgrade && attrDelta('expMod')">{{deltaText(attrDelta('expMod'))}}</span></strong></div>
                 <div class="attribute metric"><small>Initiative</small><strong>{{canAct?attr('init'):'—'}}<span class="attr-delta" [class.negative]="attrDelta('init') < 0" *ngIf="upgrade && attrDelta('init')">{{deltaText(attrDelta('init'))}}</span></strong><small class="footnote">Броня −{{armourPenalty}} · Усталость: {{fatigueInitiativePenalty===null?'нет действий':fatigueInitiativePenalty}}</small></div>
                 <button class="attribute metric interactive" type="button" (click)="movementDialog=true">
-                  <small>Movement <span class="material-icons ui-icon" aria-hidden="true">open_in_new</span></small><strong>{{currentMovement}} м<span class="attr-delta" [class.negative]="movementDelta < 0" *ngIf="upgrade && movementDelta">{{deltaText(movementDelta)}}</span></strong><small class="footnote">Бег · плавание · прыжки</small>
+                  <small>Movement <span class="material-icons ui-icon" aria-hidden="true">open_in_new</span></small><strong>{{currentMovement}} м<span class="attr-delta" [class.negative]="movementDelta < 0" *ngIf="upgrade && movementDelta">{{deltaText(movementDelta)}}</span></strong><small class="footnote">Бег · плавание · лазание · прыжки</small>
                 </button>
                 <div class="resource"><small>Action Points</small><strong>{{currentResource('ap',attr('ap'))}}<span>/{{attr('ap')}}</span><span class="attr-delta" [class.negative]="attrDelta('ap') < 0" *ngIf="upgrade && attrDelta('ap')">{{deltaText(attrDelta('ap'))}}</span></strong>
                   <div class="resource-controls"><button type="button" (click)="adjustResource('ap',-1,attr('ap'))">−</button><button type="button" (click)="adjustResource('ap',1,attr('ap'))">＋</button></div></div>
@@ -245,24 +298,15 @@
                 <span>AP: {{currentFatigueRule.actionPoints===null?'—':currentFatigueRule.actionPoints}}</span>
               </div>
             </div>
-            <div class="effect-row" *ngFor="let effect of effects" [class.is-injury]="!!effect.injury"
-              role="button" tabindex="0" (click)="openEffectDialog(effect)"
-              (keydown.enter)="openEffectDialog(effect)"
-              (keydown.space)="openEffectDialog(effect); $event.preventDefault()"
-              [attr.aria-label]="'Открыть эффект ' + effect.name">
-              <div><strong>{{effect.name}}</strong><small *ngIf="effect.duration">Длительность: {{effect.duration}}</small>
-                <p class="effect-description" *ngIf="effect.description">{{effect.description}}</p>
-                <small class="effect-modifier" *ngFor="let mod of effect.modifiers">{{modifierLabel(mod)}}</small>
-              </div>
-              <span class="effect-actions">
-                <button type="button" (click)="$event.stopPropagation(); openEffectDialog(effect)" [attr.aria-label]="'Изменить эффект ' + effect.name">✎</button>
-                <button type="button" (click)="$event.stopPropagation(); removeEffect(effect.id)" [attr.aria-label]="'Снять эффект ' + effect.name">×</button>
-              </span>
-            </div>
+            <div class="effects-list" *ngIf="generalEffects.length || gifts.length">
+              <ng-container *ngFor="let effect of generalEffects">
+                <ng-container *ngTemplateOutlet="effectEntry; context: {$implicit: effect}"></ng-container>
+              </ng-container>
             <div class="effect-row old-gift" *ngFor="let gift of gifts">
               <div><strong>{{gift.name}}</strong><small>Сохранённый дар</small><p *ngIf="gift.description" class="effect-description">{{gift.description}}</p></div>
             </div>
-            <p class="empty-state" *ngIf="!effects.length && !gifts.length">Активных эффектов нет.</p>
+            </div>
+            <p class="empty-state" *ngIf="!generalEffects.length && !gifts.length">Активных эффектов нет.</p>
             <button class="inline-add" type="button" (click)="openEffectDialog()">＋ Добавить эффект или состояние</button>
           </div>
           </div>
@@ -290,14 +334,18 @@
               </article>
               <p *ngIf="!styles.length" class="empty-state">Боевые стили пока не выбраны.</p>
             </div>
-            <div class="table-scroll" *ngIf="allWeaponRows.length">
+            <div class="weapon-groups" *ngIf="allWeaponRows.length">
+              <section *ngFor="let group of weaponGroups; trackBy: trackWeaponGroup" class="weapon-group">
+                <h3>{{group.title}}</h3>
+                <div class="table-scroll" *ngIf="group.rows.length; else noWeaponsInGroup">
               <table class="data-table"><thead><tr><th>Оружие / щит</th><th>Урон</th><th>Size</th><th>Reach / Range</th><th>AP / HP</th><th>ENC</th><th></th></tr></thead>
-                <tbody><ng-container *ngFor="let w of allWeaponRows;let index=index">
-                  <tr class="clickable-row" (click)="openedWeapon=openedWeapon===index?-1:index">
+                <tbody><ng-container *ngFor="let row of group.rows">
+                <ng-container *ngIf="row.weapon as w">
+                  <tr class="clickable-row" (click)="openedWeapon=openedWeapon===row.index?-1:row.index">
                     <td><strong>{{w.name}}</strong><small>{{weaponType(w)}}</small></td><td>{{weaponDamage(w)}}</td><td>{{w.size || '—'}}</td>
-                    <td>{{w.range || w.reach || '—'}}</td><td>{{w.ap ?? '—'}} / {{w.hp ?? '—'}}</td><td>{{w.enc ?? '—'}}</td><td><button type="button" class="weapon-toggle" [attr.aria-expanded]="openedWeapon===index" [attr.aria-label]="'Характеристики оружия '+w.name" (click)="openedWeapon=openedWeapon===index?-1:index;$event.stopPropagation()"><span class="material-icons ui-icon" aria-hidden="true">{{openedWeapon===index?'expand_less':'expand_more'}}</span></button></td>
+                    <td>{{w.range || w.reach || '—'}}</td><td>{{w.ap ?? '—'}} / {{w.hp ?? '—'}}</td><td>{{w.enc ?? '—'}}</td><td><button type="button" class="weapon-toggle" [attr.aria-expanded]="openedWeapon===row.index" [attr.aria-label]="'Характеристики оружия '+w.name" (click)="openedWeapon=openedWeapon===row.index?-1:row.index;$event.stopPropagation()"><span class="material-icons ui-icon" aria-hidden="true">{{openedWeapon===row.index?'expand_less':'expand_more'}}</span></button></td>
                   </tr>
-                  <tr *ngIf="openedWeapon===index" class="expanded-row"><td colspan="7"><div class="weapon-extra">
+                  <tr *ngIf="openedWeapon===row.index" class="expanded-row"><td colspan="7"><div class="weapon-extra">
                     <div class="weapon-effects">
                       <div><strong>Наступательные эффекты:</strong> <button type="button" class="rule-link" *ngFor="let name of weaponEffectNames(w,'offensive')" (click)="openWeaponEffect(name,w)">{{name}}</button><span *ngIf="!weaponEffectNames(w,'offensive').length">—</span></div>
                       <div><strong>Защитные эффекты:</strong> <button type="button" class="rule-link" *ngFor="let name of weaponEffectNames(w,'defensive')" (click)="openWeaponEffect(name,w)">{{name}}</button><span *ngIf="!weaponEffectNames(w,'defensive').length">—</span></div>
@@ -307,8 +355,11 @@
                     </p>
                     <label class="inline-checkbox"><input type="checkbox" [(ngModel)]="w.equipped"> В руках / экипировано</label>
                   </div></td></tr>
-                </ng-container></tbody>
+                </ng-container></ng-container></tbody>
               </table>
+                </div>
+                <ng-template #noWeaponsInGroup><p class="empty-state">В этой группе нет оружия.</p></ng-template>
+              </section>
             </div>
             <p class="empty-state" *ngIf="!allWeaponRows.length">Нет оружия. Добавьте его в конструкторе — оно появится здесь автоматически.</p>
           </section>
@@ -344,7 +395,14 @@
                   <button class="quiet compact" type="button" *ngIf="cult.manual" (click)="resetDevotionToRank()">Вернуть максимум по рангу</button>
                 </article>
                 <p>Максимум считается по рангу (ТЗ §8.2) и может быть изменён эффектом. Текущий запас сохраняется с персонажем; сумма пулов всех теистических культов не может превышать POW.</p>
-                <p class="rule-note">Стоимость обращения: Initiate 1 MP / 1 ход, Acolyte 2 MP / 2 хода, Priest 3 MP / 3 хода. Critical успех — бесплатно, Failure — без расхода, Fumble — потеря 1 MP.</p>
+                <div class="magic-rules-tables">
+                  <table class="data-table magic-rule-table">
+                    <caption>Стоимость обращения</caption>
+                    <thead><tr><th scope="col">Ранг</th><th scope="col">MP</th><th scope="col">Ходы</th></tr></thead>
+                    <tbody><tr><td>Initiate</td><td>1</td><td>1</td></tr><tr><td>Acolyte</td><td>2</td><td>2</td></tr><tr><td>Priest</td><td>3</td><td>3</td></tr></tbody>
+                  </table>
+                  <ng-container *ngTemplateOutlet="magicCost; context: {$implicit: [['Critical', '0 MP'], ['Success', 'По рангу'], ['Failure', '0 MP'], ['Fumble', '1 MP']]}"></ng-container>
+                </div>
               </div>
               <div class="magic-resource" *ngIf="m.title==='Folk Magic'">
                 <h4>Заклинания Folk Magic</h4>
@@ -354,7 +412,9 @@
                   <span>При создании: {{folkMagic.starting}}</span>
                   <span>Intensity / Magnitude: 1 / 1</span>
                 </div>
-                <p>При создании — одно заклинание за каждые 20% или неполные 20% навыка; для профессий, специально связанных с Folk Magic, — за каждые 10%. Применение — 1 ход: успех 1 MP, critical 0, failure 1 MP, fumble 1d3.</p>
+                <p>При создании — одно заклинание за каждые 20% или неполные 20% навыка; для профессий, специально связанных с Folk Magic, — за каждые 10%.</p>
+                <p>Применение занимает один ход.</p>
+                <ng-container *ngTemplateOutlet="magicCost; context: {$implicit: [['Critical', '0 MP'], ['Success', '1 MP'], ['Failure', '1 MP'], ['Fumble', '1d3 MP']]}"></ng-container>
               </div>
               <div class="magic-resource shaping-points" *ngIf="m.title==='Sorcery'">
                 <h4>Очки формирования <strong>{{shapingPoints}}</strong></h4>
@@ -365,7 +425,8 @@
                   <span>Память: {{sorcery.known}} / {{sorcery.memoryLimit}} (INT)</span>
                 </div>
                 <p>Shaping {{relatedSkill('Shaping') || 0}}% ÷ 10, округление вверх. Лимит для формирования заклинания.</p>
-                <p class="rule-note">Компоненты Shaping: Combine, Duration, Magnitude, Range, Targets. Концентрация — только на одном заклинании. Стоимость: 1 + изменённые компоненты + дополнительные заклинания; при Critical — половина, округлённая вверх.</p>
+                <p class="rule-note">Компоненты Shaping: Combine, Duration, Magnitude, Range, Targets. Концентрация — только на одном заклинании.</p>
+                <ng-container *ngTemplateOutlet="magicCost; context: {$implicit: [['Critical', 'Половина стоимости, округление вверх'], ['Success', '1 MP + изменённые компоненты + дополнительные заклинания']]}"></ng-container>
               </div>
               <div class="magic-resource" *ngIf="m.title==='Animism'">
                 <h4>Духи</h4>
@@ -376,7 +437,43 @@
                   <span>Spirit Damage: {{animism.damage || '—'}}</span>
                   <span>Ранг: {{animism.rank || 'не задан'}}</span>
                 </div>
-                <p class="rule-note">Max POW духа = 3 × Critical Range Binding. Лимит духов: Follower ceil(CHA/4), Spirit Worshipper ceil(CHA/2), Shaman ceil(3·CHA/4), High Shaman и Spirit Lord — CHA. Trance обнаруживает духов в радиусе POW в метрах; вход в мир духов — 1 MP. Spirit Intensity по POW духа: 1–6 → 0, 7–12 → 1, 13–18 → 2, далее +6 к диапазону POW.</p>
+                <p class="rule-note">Max POW духа = 3 × Critical Range Binding. Лимит духов: Follower ceil(CHA/4), Spirit Worshipper ceil(CHA/2), Shaman ceil(3·CHA/4), High Shaman и Spirit Lord — CHA. Trance обнаруживает духов в радиусе POW в метрах; вход в мир духов требует MP.</p>
+                <table class="data-table magic-rule-table">
+                  <caption>Действие и стоимость</caption>
+                  <thead><tr><th scope="col">Действие</th><th scope="col">Расход</th></tr></thead>
+                  <tbody><tr><td>Вход в мир духов</td><td>1 MP</td></tr></tbody>
+                </table>
+                <table class="data-table magic-rule-table">
+                  <caption>Spirit Intensity</caption>
+                  <thead><tr><th scope="col">POW духа</th><th scope="col">Intensity</th></tr></thead>
+                  <tbody><tr><td>1–6</td><td>0</td></tr><tr><td>7–12</td><td>1</td></tr><tr><td>13–18</td><td>2</td></tr></tbody>
+                </table>
+                <small>Дальше Intensity растёт на 1 за каждые следующие 6 POW.</small>
+                <ul class="spirit-list" *ngIf="spirits.length">
+                  <li *ngFor="let spirit of spirits; let index = index">
+                    <strong>{{spirit.name}}</strong> · {{spirit.state === 'bound' ? 'Связанный' : 'Известный'}}
+                    <span *ngIf="spirit.vessel"> · {{spirit.vessel}}</span>
+                    <span *ngIf="spirit.abilities"> · {{spirit.abilities}}</span>
+                    <span *ngIf="spirit.resources"> · {{spirit.resources}}</span>
+                    <button class="quiet compact" type="button" (click)="removeSpirit(index)" [attr.aria-label]="'Убрать запись о духе ' + spirit.name">Убрать запись</button>
+                  </li>
+                </ul>
+                <button *ngIf="!addingSpirit" type="button" class="quiet compact" (click)="addingSpirit = true">＋ Дух</button>
+                <form *ngIf="addingSpirit" class="draft-entry" (ngSubmit)="addSpirit()">
+                  <label>Имя <input name="spiritName" [(ngModel)]="spiritDraft.name" required></label>
+                  <label>Связь
+                    <select name="spiritState" [(ngModel)]="spiritDraft.state">
+                      <option value="known">Известный</option><option value="bound">Связанный</option>
+                    </select>
+                  </label>
+                  <label>Фетиш или носитель <input name="spiritVessel" [(ngModel)]="spiritDraft.vessel"></label>
+                  <label>Способности <input name="spiritAbilities" [(ngModel)]="spiritDraft.abilities"></label>
+                  <label>Ресурсы <input name="spiritResources" [(ngModel)]="spiritDraft.resources"></label>
+                  <div class="inline-actions">
+                    <button type="submit" class="primary compact" [disabled]="!spiritDraft.name.trim()">Добавить духа</button>
+                    <button type="button" class="quiet compact" (click)="cancelSpirit()">Отмена</button>
+                  </div>
+                </form>
               </div>
               <div class="magic-resource" *ngIf="m.title==='Mysticism · Augmentations'">
                 <h4>Путь и Intensity</h4>
@@ -396,13 +493,33 @@
             <p *ngIf="!traditions.length" class="empty-state">Персонаж пока не владеет заклинаниями или магическими способностями.</p>
           </section>
           <section *ngSwitchCase="'armour'">
-            <div class="tab-intro"><div><h2>Надетая броня</h2><p>Из Mythras Tools: броня хранится отдельно для каждой локации.</p></div><div class="inline-actions"><button class="quiet" type="button" (click)="openArmourPicker(selectedLocation)">＋ Броня</button><button class="quiet" type="button" (click)="editInBuilder('equipment','armour')">Конструктор</button></div></div>
-            <div class="armour-summary"><div><small>Штраф брони</small><strong>{{armourPenalty}}</strong></div><div><small>Источник</small><strong>Equipment</strong></div></div>
-            <div class="armour-list"><div class="armour-row" *ngFor="let loc of equipmentSlots">
-              <div><strong>{{loc.label}}</strong><small>{{character.equipment[loc.key].type || 'Без брони'}} · {{character.equipment[loc.key].material || ''}}</small></div>
-              <span class="armour-ap" [class.empty]="!ap(loc.key)">AP {{ap(loc.key)}}</span><span>ENC {{character.equipment[loc.key].enc || 0}}</span>
-              <button class="quiet compact" type="button" (click)="openArmourPicker(loc.key)" [attr.aria-label]="'Добавить броню: ' + loc.label">＋</button>
-            </div></div>
+            <div class="tab-intro"><h2>Броня</h2>
+              <div class="inline-actions">
+                <button class="quiet" type="button" (click)="openArmourPicker(selectedLocation)">＋ Броня</button>
+                <button class="quiet" type="button" (click)="openArmourBuilder(selectedLocation)">Конструктор</button>
+              </div>
+            </div>
+            <div class="armour-summary">
+              <div><small>Нагрузка снаряжения</small><strong>{{armourLoad.gear | number:'1.0-2'}}</strong></div>
+              <div><small>Нагрузка надетой брони</small><strong>{{armourLoad.worn | number:'1.0-2'}}</strong></div>
+              <div><small>Общая нагрузка</small><strong>{{armourLoad.total | number:'1.0-2'}}</strong></div>
+              <div><small>Штраф за броню</small><strong>{{armourPenalty}}</strong></div>
+            </div>
+            <div class="armour-list">
+              <div class="armour-row" *ngFor="let loc of equipmentSlots">
+                <div><strong>{{loc.label}}</strong><small>{{hasArmour(character.equipment[loc.key]) ? armourLabel(character.equipment[loc.key]) : 'Без брони'}}</small></div>
+                <span class="armour-ap" [class.empty]="!ap(loc.key)">AP {{ap(loc.key)}}</span>
+                <span>ENC {{character.equipment[loc.key].enc || 0}}</span>
+                <div class="inline-actions armour-actions">
+                  <select *ngIf="armourOptions(loc.key).length" #selection (change)="wearArmour(loc.key, selection)" [attr.aria-label]="'Надеть броню: ' + loc.label">
+                    <option value="">Надеть…</option>
+                    <option *ngFor="let entry of armourOptions(loc.key); index as i" [value]="i">{{armourLabel(entry.piece)}} · AP {{entry.piece.ap || 0}} · ENC {{entry.piece.enc || 0}}</option>
+                  </select>
+                  <button *ngIf="hasArmour(character.equipment[loc.key])" type="button" class="quiet compact" (click)="takeOffArmour(loc.key)" [attr.aria-label]="'Снять броню: ' + loc.label">Снять</button>
+                  <button class="quiet compact" type="button" (click)="openArmourPicker(loc.key)" [attr.aria-label]="'Добавить броню: ' + loc.label">＋</button>
+                </div>
+              </div>
+            </div>
           </section>
           <section *ngSwitchCase="'equipment'">
             <div class="tab-intro"><div><h2>Снаряжение</h2><p>Отдельно от экипированной брони и оружия.</p></div><div class="inline-actions"><button class="quiet" type="button" (click)="openItemPicker()">＋ Предмет</button><button class="quiet" type="button" (click)="editInBuilder('equipment','items')">Конструктор</button></div></div>
@@ -410,11 +527,23 @@
               <strong>{{item.name || 'Без названия'}}</strong><span>Количество: {{item.quantity || 1}}</span><span>ENC: {{item.enc || 0}}</span><p *ngIf="item.description">{{item.description}}</p>
             </div></div>
             <p class="empty-state" *ngIf="!character.equipment.items.length">Снаряжение не добавлено.</p>
+            <section *ngIf="carriedArmour.length">
+              <h3>Броня в снаряжении</h3>
+              <div class="equipment-list">
+                <div class="equipment-item" *ngFor="let entry of carriedArmour">
+                  <strong>{{armourLabel(entry.piece)}}</strong><span>{{locationLabel(entry.location)}}</span>
+                  <span>AP {{entry.piece.ap || 0}} · ENC {{entry.piece.enc || 0}}</span>
+                </div>
+              </div>
+            </section>
             <label class="notes-label">Заметки о снаряжении <textarea rows="5" [(ngModel)]="equipmentNotes" placeholder="Что находится в сумке, где оставлено, что требуется приобрести…"></textarea></label>
           </section>
           <section *ngSwitchCase="'notes'">
             <div class="tab-intro"><div><h2>Игровые заметки</h2><p>Сохраняются в исходном поле sessionNotes персонажа.</p></div></div>
             <label class="notes-label">События, обещания, имена и планы <textarea rows="10" [(ngModel)]="sessionNotes" placeholder="Заметки из игры…"></textarea></label>
+            <label class="notes-label" *ngFor="let field of noteFields">{{field.label}}
+              <textarea rows="5" [(ngModel)]="character[field.key]" [placeholder]="notePlaceholder(field.key)"></textarea>
+            </label>
           </section>
         </div>
       </section>
@@ -422,10 +551,36 @@
   </div>
 </div>
 
+<ng-template #magicCost let-rows>
+  <table class="data-table magic-rule-table">
+    <caption>Расход при проверке</caption>
+    <thead><tr><th scope="col">Результат</th><th scope="col">Расход</th></tr></thead>
+    <tbody><tr *ngFor="let row of rows"><td>{{row[0]}}</td><td>{{row[1]}}</td></tr></tbody>
+  </table>
+</ng-template>
+
+<ng-template #effectEntry let-effect>
+            <div class="effect-row"  [class.is-injury]="!!effect.injury"
+              role="button" tabindex="0" (click)="openEffectDialog(effect)"
+              (keydown.enter)="$event.target === $event.currentTarget && openEffectDialog(effect)"
+              (keydown.space)="$event.target === $event.currentTarget && openEffectDialog(effect); $event.target === $event.currentTarget && $event.preventDefault()"
+              [attr.aria-label]="'Открыть эффект ' + effect.name">
+              <div><strong>{{effect.name}}</strong><small *ngIf="effect.duration">Длительность: {{effect.duration}}</small>
+                <p class="effect-description" *ngIf="effect.description">{{effect.description}}</p>
+                <small class="effect-modifier" *ngFor="let mod of effect.modifiers">{{modifierLabel(mod)}}</small>
+              </div>
+              <span class="effect-actions">
+                <button type="button" (click)="$event.stopPropagation(); openEffectDialog(effect)" [attr.aria-label]="'Изменить эффект ' + effect.name">✎</button>
+                <button type="button" (click)="$event.stopPropagation(); removeEffect(effect.id)" [attr.aria-label]="'Снять эффект ' + effect.name">×</button>
+              </span>
+            </div>
+
+</ng-template>
+
 <!-- Skill difficulty modal, closed by backdrop, button and Escape -->
 <div class="overlay" *ngIf="activeSkill" (mousedown)="stopOverlay($event)">
   <div class="dialog skill-check-dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-label="Сложности навыка">
-    <header><div><small>Проверка навыка</small><h2>{{activeSkill.name}}</h2></div><button type="button" (click)="activeSkill=null" aria-label="Закрыть">×</button></header>
+    <header><div><small>{{movementCheck ? movementCheck + ' · Проверка навыка' : 'Проверка навыка'}}</small><h2>{{activeSkill.name}}</h2></div><button type="button" (click)="activeSkill=null" aria-label="Закрыть">×</button></header>
     <div class="dialog-body"><div class="dialog-result"><span>Текущее значение</span><strong>{{skillValue(activeSkill)}}%</strong></div>
       <div class="augment-block">
         <label class="field-label" for="companion-augment">Вспомогательный навык (не более одного)
@@ -487,6 +642,7 @@
             <strong>{{checkResult.label}}</strong>
             <span *ngIf="checkResult.roll!==null">Бросок {{checkResult.roll}} · {{selectedDifficulty.name}}</span>
             <small>{{checkResult.explanation}}</small>
+            <p *ngIf="movementOutcome">{{movementOutcome}}</p>
           </div>
         </ng-container>
         <ng-template #noRoll>
@@ -577,15 +733,47 @@
   <div class="dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-label="Движение и прыжки">
     <header><div><small>Расчёт от Athletics, Swim, роста, движения и штрафа брони</small><h2>Movement</h2></div><button type="button" (click)="movementDialog=false" aria-label="Закрыть">×</button></header>
     <div class="dialog-body">
-      <div class="difficulty-grid movement-stats">
-        <div><span>Ходьба</span><strong>{{move.walking | number:'1.0-2'}} м</strong></div>
-        <div><span>Бег</span><strong>{{move.running | number:'1.0-2'}} м</strong></div>
-        <div><span>Спринт</span><strong>{{move.sprinting | number:'1.0-2'}} м</strong></div>
-        <div><span>Плавание</span><strong>{{move.swimming | number:'1.0-2'}} м</strong></div>
-        <div><span>Прыжок в длину</span><strong>{{move.horizontalJump | number:'1.0-2'}} м</strong></div>
-        <div><span>Прыжок в высоту</span><strong>{{move.verticalJump | number:'1.0-2'}} м</strong></div>
-      </div>
-      <p class="calculation-explainer">Рост: {{move.heightMetres}} м · Athletics: {{move.athletics}}% · Swim: {{move.swimSkill}}% · Штраф брони: {{move.armourPenalty}}. Это совместимые с прежним листом формулы; применение всех специальных правил движения требует дополнительной проверки.</p>
+      <ng-container *ngIf="move as speed">
+        <div class="difficulty-grid movement-stats">
+          <div><span>Ходьба</span><strong>{{speed.walking | number:'1.0-2'}} м</strong></div>
+          <button type="button" class="difficulty-card" (click)="openMovementCheck('Бег')">
+            <span>Бег</span><strong>{{(runWithAthletics ? speed.running : speed.runningWithoutBonus) | number:'1.0-2'}} м</strong>
+            <small>Проверить Атлетику</small>
+          </button>
+          <button type="button" class="difficulty-card" (click)="openMovementCheck('Спринт')">
+            <span>Спринт</span><strong>{{(runWithAthletics ? speed.sprinting : speed.sprintingWithoutBonus) | number:'1.0-2'}} м</strong>
+            <small>Проверить Атлетику</small>
+          </button>
+          <div><span>Плавание</span><strong>{{speed.swimming | number:'1.0-2'}} м</strong>
+            <small *ngIf="speed.armourPenalty > 0 && speed.walking > 0 && speed.swimming === 0">Едва держится на воде</small>
+            <small *ngIf="speed.swimming < 0">Тонет</small>
+          </div>
+        </div>
+        <label class="inline-checkbox"><input type="checkbox" [(ngModel)]="runWithAthletics"> Учитывать бонус Атлетики при беге и спринте</label>
+        <section class="movement-section">
+          <div class="tab-intro"><h3>Лазание</h3><button class="quiet compact" type="button" (click)="openMovementCheck('Лазание')">Проверить Атлетику · Лазание</button></div>
+          <div class="difficulty-grid movement-stats">
+            <div><span>Лёгкая поверхность</span><strong>{{speed.climb.easy || 'Недоступно'}}{{speed.climb.easy ? ' м' : ''}}</strong></div>
+            <div><span>Крутая поверхность</span><strong>{{speed.climb.steep || 'Недоступно'}}{{speed.climb.steep ? ' м' : ''}}</strong></div>
+            <div><span>Отвесная поверхность</span><strong>{{speed.climb.sheer || 'Недоступно'}}{{speed.climb.sheer ? ' м' : ''}}</strong></div>
+          </div>
+          <p class="calculation-explainer">Проверка нужна на скользких, осыпающихся и других опасных поверхностях или когда персонажа отвлекают во время подъёма.</p>
+        </section>
+        <section class="movement-section">
+          <div class="tab-intro"><h3>Прыжки</h3><button class="quiet compact" type="button" (click)="openMovementCheck('Прыжок')">Проверить Атлетику · Прыжок</button></div>
+          <label class="movement-mode">Тип прыжка
+            <select [(ngModel)]="jumpRunUp"><option [ngValue]="true">С разбега от 5 м</option><option [ngValue]="false">С места</option></select>
+          </label>
+          <label class="inline-checkbox"><input type="checkbox" [(ngModel)]="jumpCritical"> Критический успех Атлетики</label>
+          <div class="difficulty-grid movement-stats">
+            <div><span>Длина</span><strong>{{jump('horizontal') === null ? '—' : (jump('horizontal') | number:'1.0-2') + ' м'}}</strong></div>
+            <div><span>Высота</span><strong>{{jump('vertical') === null ? '—' : (jump('vertical') | number:'1.0-2') + ' м'}}</strong></div>
+          </div>
+          <p class="calculation-explainer" *ngIf="!jumpCritical">При обычном успехе прыжок дальше половины максимальной дистанции заканчивается приземлением ничком.</p>
+          <p class="calculation-explainer" *ngIf="speed.heightMetres <= 0">Укажите рост в данных персонажа.</p>
+        </section>
+        <p class="calculation-explainer">Рост {{speed.heightMetres || '—'}} м · Athletics {{speed.athletics}}% · Swim {{speed.swimSkill}}% · Штраф брони {{speed.armourPenalty}}</p>
+      </ng-container>
     </div>
   </div>
 </div>
@@ -657,7 +845,7 @@
   <div class="dialog picker-dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-labelledby="picker-title">
     <header><div><small>Лист персонажа</small><h2 id="picker-title">{{pickerTitle}}</h2></div><button type="button" (click)="closePicker()" aria-label="Закрыть">×</button></header>
     <div class="dialog-body">
-      <input class="search-field" type="search" [(ngModel)]="pickerQuery" autofocus
+      <input *ngIf="picker !== 'armour-builder'" class="search-field" type="search" [(ngModel)]="pickerQuery" autofocus
         [attr.placeholder]="picker==='spell' ? 'Название или метка…' : 'Поиск по названию…'" aria-label="Поиск">
       <label class="inline-checkbox" *ngIf="picker==='weapon'">
         <input type="checkbox" [(ngModel)]="weaponStyleOnly"> Только оружие моих боевых стилей
@@ -671,6 +859,20 @@
         </li>
         <li class="picker-empty" *ngIf="!filteredWeapons.length">Оружие не найдено.</li>
       </ul>
+      <button *ngIf="picker === 'armour'" class="quiet compact" type="button" (click)="openArmourBuilder(armourLocation)">Конструктор брони</button>
+      <div *ngIf="picker === 'armour-builder'" class="draft-entry armour-builder">
+        <label>Локация
+          <select [(ngModel)]="armourLocation">
+            <option *ngFor="let loc of equipmentSlots" [ngValue]="loc.key">{{loc.label}}</option>
+          </select>
+        </label>
+        <equipment [equipment]="armourDraft"></equipment>
+        <label>Название <input [(ngModel)]="armourDraft.name"></label>
+        <div class="inline-actions">
+          <button class="primary compact" type="button" (click)="saveArmourDraft()" [disabled]="!canSaveArmourDraft">Добавить в снаряжение</button>
+          <button class="quiet compact" type="button" (click)="closePicker()">Отмена</button>
+        </div>
+      </div>
       <ul class="picker-list" *ngIf="picker==='armour'">
         <li *ngFor="let preset of filteredArmourPresets">
           <button type="button" (click)="chooseArmour(preset)">

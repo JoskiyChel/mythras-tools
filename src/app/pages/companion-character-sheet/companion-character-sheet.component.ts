@@ -4,11 +4,17 @@ import { Component, DoCheck, HostListener, OnDestroy, OnInit, inject } from '@an
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Character } from '../../model/character';
-import { Skill } from '../../model/skill';
+import { CharacterPassions } from '../../model/character-passions';
+import { SpiritRecord } from '../../model/character-magic';
+import { EquipmentEditComponent } from '../../character/equipment-edit/equipment-edit.component';
+import { Skill, SkillCategory } from '../../model/skill';
 import { CombatStyle } from '../../model/combat-style';
 import { CharacterWeapon } from '../../model/character-weapon';
 import { Weapon } from '../../model/weapon';
 import { Item } from '../../model/item';
+import WeaponCategories from '../../jsons/weapon-categories.json';
+import { armourLabel, armourLoad, canCarryArmour, carryArmour, changeWornArmour, hasArmour, spareArmour } from '../../services/armour-loadout';
+import { SheetThemeService } from '../../services/sheet-theme.service';
 import { Equipment } from '../../model/equipment';
 import { SpecialEffectsService } from '../../services/special-effects.service';
 import { WeaponService } from '../../services/weapon.service';
@@ -28,7 +34,7 @@ import {
   calculationCharacter, skillModifierTotal,
   magicPointMaximum, maxLocationHp, displayedLocationHp, initializePristineHitPoints, movementSummary,
   skillGroups, fatigueRule, canAct, changeLocationHp, findTraditionSkill, shapingPointMaximum,
-  visibleProfessionalSkills,
+  visibleProfessionalSkills, severity, difficultyStep, jumpDistance,
   DIFFICULTY_STEPS, DifficultyStep, CheckThresholds, checkThresholds, augmentingBonus,
   WOUND_TYPES, MAJOR_WOUND_TYPES, locationInjuries, setLocationInjuries, magicModifier,
   theismPoolLimit, theismIntensity, animismMaxSpiritPow, animismSpiritLimit,
@@ -43,6 +49,15 @@ interface SheetInfo { title:string; source?:string; sections:{label:string;parag
 interface CheckHistoryEntry { skill:string; difficulty:string; roll:number; label:string; outcome:string; }
 interface DiceHistoryEntry { expression:string; total:number; mode:'virtual'|'manual'; }
 interface ChangeHistoryEntry { snapshot:string; label:string; time:number; }
+
+type DraftEntryKind = 'catalogue' | 'passion' | 'language' | 'custom';
+type MovementCheck = 'Бег' | 'Спринт' | 'Лазание' | 'Прыжок';
+const SHIELDS = new Set(WeaponCategories.Shield.map(name => name.toLowerCase()));
+const WOUND_LABELS = {
+  healthy: 'Без ранения', minor: 'Лёгкое ранение',
+  serious: 'Серьёзное ранение', major: 'Тяжёлое ранение',
+};
+const emptySpirit = (): SpiritRecord => ({name: '', state: 'known', vessel: '', abilities: '', resources: ''});
 
 type SheetTab = 'weapons'|'magic'|'armour'|'equipment'|'notes';
 /** Geometry of one part of the anatomical plate. `path` is the whole part,
@@ -131,22 +146,26 @@ const ATT_KEYS: {key:AttributeKey; name:string}[] = [
 @Component({
   selector:'app-companion-character-sheet',
   standalone:true,
-  imports:[CommonModule,FormsModule,RouterModule,A11yModule],
+  imports:[CommonModule,FormsModule,RouterModule,A11yModule,EquipmentEditComponent],
   templateUrl:'./companion-character-sheet.component.html',
   styleUrls:['./companion-character-sheet.component.scss'],
 })
 export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCheck {
   readonly storage=inject(AppStorageService);
+  readonly theme = inject(SheetThemeService);
   private readonly router=inject(Router);
   private readonly specialEffects=inject(SpecialEffectsService);
   private readonly weapons=inject(WeaponService);
   readonly weaponCatalog:Weapon[]=this.weapons.getWeapons();
   readonly armourPresets=ARMOUR_PRESETS;
   readonly toolsCatalog=(ToolsShop as {item:string;enc:string;cost:string}[]);
-  picker:'weapon'|'armour'|'item'|'spell'|null=null;
+  picker:'weapon'|'armour'|'armour-builder'|'item'|'spell'|null=null;
   pickerQuery='';
   weaponStyleOnly=false;
   armourLocation:HitLocation='chest';
+  armourDraft = new Equipment();
+  readonly armourLabel = armourLabel;
+  readonly hasArmour = hasArmour;
   spellTradition:'folk'|'sorcery'|'miracles'|null=null;
   private saveHandle?:DebouncedSaveHandle;
   /** Session-only character snapshots. Never persisted in the character JSON. */
@@ -176,7 +195,8 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   readonly locations:LocationDisplay[] = HIT_LOCATION_RULES.map(rule => ({
     key:rule.key, label:rule.labelRu, roll:rule.roll, ...LOCATION_GEOMETRY[rule.key],
   }));
-  readonly difficulties=DIFFICULTY_STEPS;
+  readonly difficulties = DIFFICULTY_STEPS.filter(step => step.mode === 'normal');
+  readonly woundLabels = WOUND_LABELS;
   readonly woundTypes=WOUND_TYPES;
   readonly tabs:{key:SheetTab;label:string}[]=[
     {key:'weapons',label:'Боевой стиль и оружие'},
@@ -190,12 +210,16 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   activeSkill:Skill|null=null;
   activeInfo:SheetInfo|null=null;
   movementDialog=false;
+  movementCheck: MovementCheck | null = null;
+  runWithAthletics = true;
+  jumpRunUp = true;
+  jumpCritical = false;
   selectedLocation:HitLocation='chest';
   /** One augmenting skill at a time; it affects the current check only. */
   augmentSkill:Skill|null=null;
   augmentQuery='';
   /** A check is always resolved against one selected difficulty step. */
-  selectedDifficulty:DifficultyStep=DIFFICULTY_STEPS[3];
+  selectedDifficulty:DifficultyStep=difficultyStep('Standard');
   checkRollMode:'virtual'|'manual'='virtual';
   manualCheckRoll:number|null=null;
   checkDiceResult:DiceRollResult|null=null;
@@ -227,6 +251,21 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   /** Professional skills learned inside the sheet before the draft is applied. */
   readonly draftAddedSkills: Skill[]=[];
   newSkillName='';
+  draftEntryKind: DraftEntryKind = 'catalogue';
+  readonly draftNewSkills: Skill[] = [];
+  readonly draftPassions: CharacterPassions[] = [];
+  customSkillName = '';
+  customSkillCategory: SkillCategory = 'professional';
+  customSkillBase: [CharacteristicKey, CharacteristicKey] = ['int', 'pow'];
+  passionName = '';
+  passionValue: number | null = null;
+  spiritDraft = emptySpirit();
+  addingSpirit = false;
+  readonly noteFields = [
+    {key: 'backgroundOverall', label: 'Предыстория'},
+    {key: 'contactsOverall', label: 'Связи, союзники и враги'},
+    {key: 'cultOverall', label: 'Сведения о культе'},
+  ] as const;
   addingEffect=false;
   editingEffectId:string|null=null;
   editingInjury:SheetEffect['injury']=undefined;
@@ -319,7 +358,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   onEdit():void {this.saveHandle?.schedule();}
   @HostListener('window:beforeunload') @HostListener('window:pagehide')
   flush():void {this.saveHandle?.flush();}
-  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.diceDialog=false;this.historyOpen=false;this.cancelEffect();this.fatigueTableOpen=false;}
+  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.diceDialog=false;this.historyOpen=false;this.cancelEffect();this.closePicker();this.fatigueTableOpen=false;}
   save():void {if(this.character)this.storage.saveCharacter(this.character,'view-character');}
   editInBuilder(section?:BuilderSection,focus?:string):void {
     this.flush();if(this.storage.error)return;
@@ -330,17 +369,12 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   exportJson():void {this.flush();downloadJson(this.character,(this.character.name||'character')+'.json');}
 
   get groups(){
-    const groups=skillGroups(this.character).map(g=>({...g,skills:[...g.skills]}));
-    if(this.upgrade&&this.draftAddedSkills.length){
-      const professional=groups[2]||groups[groups.length-1];
-      professional.skills=[...professional.skills,...this.draftAddedSkills]
-        .filter((skill,index,all)=>all.indexOf(skill)===index);
-    }
+    const groups = skillGroups(this.character, this.upgrade ? this.draftAddedSkills : []);
     const query=this.query.toLowerCase();
     return groups.map(g=>({...g,skills:g.skills.filter(s=>s.name.toLowerCase().includes(query))}));
   }
   get styles(){return getAllCombatStyles(this.character);}
-  get visiblePassions(){return (this.character.passions||[]).filter(p=>Boolean(p?.passion?.trim()));}
+  get visiblePassions(){return [...this.character.passions, ...this.draftPassions].filter(p=>Boolean(p?.passion?.trim()));}
   charValue(key:CharacteristicKey):number {return currentCharacteristic(this.character,key,this.upgrade?this.draftStats:{});}
   charBase(key:CharacteristicKey):number {return currentCharacteristic(this.character,key);}
   skillValue(skill:Skill):number {
@@ -365,10 +399,11 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   /** A check starts without an augmenting skill: the choice lives only for the
    * current check and never changes the saved skill (ТЗ §6.2). */
   openSkill(skill:Skill|null):void {
+    this.movementCheck = null;
     this.activeSkill=skill;
     this.augmentSkill=null;
     this.augmentQuery='';
-    this.selectedDifficulty=DIFFICULTY_STEPS[3];
+    this.selectedDifficulty=difficultyStep('Standard');
     this.resetCheckRoll();
     if(skill)this.skillsOpen=false;
   }
@@ -553,6 +588,36 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     return (delta>0?'↑ +':'↓ −')+Math.abs(delta);
   }
   get damage():string {return damageModifier(this.character,this.upgrade?this.draftStats:{});}
+  openMovementCheck(activity: MovementCheck): void {
+    const athletics = this.character.skills.skills.find(skill => skill.name === 'Athletics');
+    if (!athletics) return;
+    this.movementDialog = false;
+    this.openSkill(athletics);
+    this.movementCheck = activity;
+  }
+  get movementOutcome(): string {
+    if (!this.movementCheck || !this.checkResult) return '';
+    const outcome = this.checkResult.outcome;
+    const legInjury = 'Сделайте проверку Выносливости. При успехе — 1 урон в случайную ногу, при неудаче — 1d4.';
+    if (this.movementCheck === 'Лазание') {
+      if (outcome === 'critical') return 'Подъём очень быстрый или удаётся избежать скрытой опасности.';
+      if (outcome === 'failure') return 'Подъём прерывается без других последствий.';
+      if (outcome === 'fumble') return 'Персонаж падает. Акробатика не смягчит урон.';
+    } else if (this.movementCheck === 'Прыжок') {
+      if (outcome === 'critical') return 'Ещё +1 м к дальности. Персонаж остаётся на ногах.';
+      if (outcome === 'success') return 'При прыжке дальше половины максимальной дистанции персонаж приземляется ничком.';
+      if (outcome === 'fumble') return 'Неудачное приземление. ' + legInjury;
+    } else {
+      if (outcome === 'critical') return 'Ещё +1 м к скорости.';
+      if (outcome === 'failure') return 'Персонаж получает один уровень усталости.';
+      if (outcome === 'fumble') return 'Бег прекращается из-за травмы. ' + legInjury;
+    }
+    return '';
+  }
+  jump(direction: 'horizontal' | 'vertical'): number | null {
+    const move = this.move;
+    return jumpDistance(move, direction, this.jumpRunUp, this.jumpCritical);
+  }
   get move(){
     const bonus=(name:string)=>this.upgrade?(this.draftSkills.get(this.character.skills.skills.find(s=>s.name===name)!)||0):0;
     return movementSummary(this.character,this.upgrade?this.draftStats:{},{athletics:bonus('Athletics'),swim:bonus('Swim')});
@@ -620,6 +685,14 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     (this.character.currentValues ||= {})[key]=next;
   }
   get effects():SheetEffect[] {return this.character.companion?.effects||[];}
+  get generalEffects(): SheetEffect[] { return this.effects.filter(effect => !effect.injury); }
+  get selectedInjuryEffects(): SheetEffect[] {
+    return this.effects.filter(effect => effect.injury?.location === this.selectedLocation);
+  }
+  woundSeverity(key: HitLocation) {
+    const max = this.maxHp(key);
+    return max > 0 ? severity(this.hp(key), max) : 'healthy';
+  }
   /** Previously saved gifts remain visible; new narrative effects use the regular effect editor. */
   get gifts(){return this.character.companion?.gifts||[];}
   removeEffect(id:string):void {
@@ -795,6 +868,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   // ---- In-sheet pickers: weapons, armour, items and spells -----------------
   get pickerTitle():string {
     if(this.picker==='weapon')return 'Добавить оружие';
+    if(this.picker==='armour-builder')return 'Конструктор брони';
     if(this.picker==='armour')return 'Броня: '+hitLocationRule(this.armourLocation).labelRu;
     if(this.picker==='item')return 'Добавить снаряжение';
     if(this.picker==='spell')return this.spellTradition==='folk'?'Folk Magic · заклинание':
@@ -839,12 +913,34 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     return this.armourPresets.filter(preset=>!query||
       [preset.type,preset.construction,preset.material].join(' ').toLowerCase().includes(query));
   }
+  get armourLoad() { return armourLoad(this.character); }
+  get carriedArmour() { return spareArmour(this.character.equipment); }
+  armourOptions(location: HitLocation) {
+    return this.carriedArmour.filter(entry => entry.location === location);
+  }
+  wearArmour(location: HitLocation, selection: HTMLSelectElement): void {
+    const index = Number(selection.value);
+    const choice = this.armourOptions(location)[index];
+    if (selection.value && choice) changeWornArmour(this.character, location, choice);
+    selection.value = '';
+  }
+  takeOffArmour(location: HitLocation): void {
+    changeWornArmour(this.character, location, null);
+  }
   chooseArmour(preset:ArmourPreset):void {
-    const equipment=this.character.equipment[this.armourLocation]
-      ?? (this.character.equipment[this.armourLocation]=new Equipment());
-    applyArmourPreset(equipment,preset.id);
-    equipment.equipped=true;
+    const piece = new Equipment();
+    applyArmourPreset(piece, preset.id);
+    carryArmour(this.character, this.armourLocation, piece);
     this.closePicker();
+  }
+  openArmourBuilder(location: HitLocation): void {
+    this.armourLocation = location;
+    this.armourDraft = new Equipment();
+    this.picker = 'armour-builder';
+  }
+  get canSaveArmourDraft(): boolean { return canCarryArmour(this.armourDraft); }
+  saveArmourDraft(): void {
+    if (carryArmour(this.character, this.armourLocation, this.armourDraft)) this.closePicker();
   }
   openItemPicker():void {this.picker='item';this.pickerQuery='';}
   get filteredItems():{item:string;enc:string;cost:string}[] {
@@ -885,7 +981,19 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
 
   get allWeaponRows():Partial<CharacterWeapon>[]{return this.character.equipment.weapons||[];}
   weaponDamage(w:any):string {if(w.damage)return String(w.damage);return [w.oneHanded,w.twoHanded,w.shield,w.unarmed,w.ranged].filter(Boolean).join(' / ')||'—';}
-  weaponType(w:any):string {return w.ranged?'Дальнее':w.shield?'Щит':'Ближнее';}
+  weaponType(w: Partial<CharacterWeapon>): string {
+    if (w.shield || SHIELDS.has(w.name?.toLowerCase() || '')) return 'Щит';
+    return w.ranged || w.range ? 'Дальнее' : 'Ближнее';
+  }
+  get weaponGroups() {
+    const rows = this.allWeaponRows.map((weapon, index) => ({weapon, index}));
+    return [
+      {type: 'Ближнее', title: 'Оружие ближнего боя'},
+      {type: 'Дальнее', title: 'Дальнобойное оружие'},
+      {type: 'Щит', title: 'Щиты'},
+    ].map(group => ({...group, rows: rows.filter(row => this.weaponType(row.weapon) === group.type)}));
+  }
+  trackWeaponGroup(_index: number, group: {type: string}): string { return group.type; }
   /* Magic discipline parameters (ТЗ §9). Everything is computed from the skills
      and cult records that already exist in the save; no new fields are written. */
   get folkMagic():{value:number;known:number;starting:number} {
@@ -942,6 +1050,19 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   get theismPoolSum():number {return this.theismAdherents.reduce((sum,cult)=>sum+cult.current,0);}
   get theismPoolRemaining():number {return Math.max(0,this.powValue-this.theismPoolSum);}
 
+  get spirits(): SpiritRecord[] { return this.character.magic.spiritRecords || []; }
+  addSpirit(): void {
+    const name = this.spiritDraft.name.trim();
+    if (!name) return;
+    (this.character.magic.spiritRecords ??= []).push({...this.spiritDraft, name});
+    this.cancelSpirit();
+  }
+  cancelSpirit(): void {
+    this.spiritDraft = emptySpirit();
+    this.addingSpirit = false;
+  }
+  removeSpirit(index: number): void { this.character.magic.spiritRecords?.splice(index, 1); }
+
   get traditions():Tradition[] {
     const m=this.character.magic;
     const ret:Tradition[]=[];
@@ -958,7 +1079,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     add('Mysticism · Invocations',this.character.mysticalOrder?.name||'',m.path?.invocations||[],['Meditation','Mysticism'],mysticismTrained);
     add('Mysticism · Enhancements',this.character.mysticalOrder?.name||'',m.path?.enhancements||[],['Meditation','Mysticism'],mysticismTrained);
     add('Other magic','Дополнительная магия',m.custom||[],[]);
-    if(m.spirits||this.character.animistCult?.name||(this.relatedSkill('Trance')||0)>0||(this.relatedSkill('Binding')||0)>0)
+    if(this.spirits.length||m.spirits||this.character.animistCult?.name||(this.relatedSkill('Trance')||0)>0||(this.relatedSkill('Binding')||0)>0)
       ret.push({title:'Animism',subtitle:this.character.animistCult?.name||'Духи',spells:m.spirits?[{name:'Духи',description:m.spirits}]:[],skills:['Trance','Binding']});
     return ret;
   }
@@ -1002,12 +1123,79 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   get equipmentSlots():LocationDisplay[]{return this.locations;}
   get equipmentNotes():string {return this.character.companion?.equipmentNotes||'';}
   set equipmentNotes(text:string){companionState(this.character).equipmentNotes=text;}
+  locationLabel(location: HitLocation): string { return hitLocationRule(location).labelRu; }
+  notePlaceholder(key: typeof this.noteFields[number]['key']): string {
+    const hero = this.character;
+    if (key === 'backgroundOverall') {
+      return [hero.backstory, hero.background, ...hero.backgroundEvents.map(event => event.text), hero.family.text]
+        .filter(Boolean).join('\n');
+    }
+    if (key === 'contactsOverall') {
+      const family = hero.family;
+      return [family.connections, 'Союзники: ' + family.allies, 'Контакты: ' + family.contacts,
+        'Соперники: ' + family.rivals, 'Враги: ' + family.enemies].filter(Boolean).join('\n');
+    }
+    return [hero.brotherhood, hero.animistCult, hero.theistCult, hero.sorceryOrder, hero.mysticalOrder]
+      .filter(cult => cult?.name).map(cult => [cult.name, cult.level].filter(Boolean).join(' · ')).join('\n');
+  }
+
   get sessionNotes():string {return this.character.sessionNotes||'';}
   set sessionNotes(text:string){this.character.sessionNotes=text;}
 
-  beginUpgrade():void {this.upgrade=true;this.draftStats={};this.draftSkills.clear();this.draftAddedSkills.length=0;this.newSkillName='';}
-  discardUpgrade():void {this.upgrade=false;this.draftStats={};this.draftSkills.clear();this.draftAddedSkills.length=0;this.newSkillName='';}
-  get hasUpgrade(){return Object.values(this.draftStats).some(v=>v!==0)||[...this.draftSkills.values()].some(x=>x!==0)||this.draftAddedSkills.length>0;}
+  beginUpgrade(): void { this.discardUpgrade(); this.upgrade = true; }
+  discardUpgrade(): void {
+    this.upgrade = false;
+    this.draftStats = {};
+    this.draftSkills.clear();
+    this.draftAddedSkills.length = 0;
+    this.draftNewSkills.length = 0;
+    this.draftPassions.length = 0;
+    this.newSkillName = '';
+    this.customSkillName = '';
+    this.customSkillCategory = 'professional';
+    this.customSkillBase = ['int', 'pow'];
+    this.passionName = '';
+    this.passionValue = null;
+    this.draftEntryKind = 'catalogue';
+  }
+  get hasUpgrade(): boolean {
+    return Object.values(this.draftStats).some(Boolean) || [...this.draftSkills.values()].some(Boolean)
+      || this.draftAddedSkills.length > 0 || this.draftPassions.length > 0;
+  }
+  get canAddPassion(): boolean {
+    return !!this.passionName.trim() && this.passionValue !== null
+      && Number.isSafeInteger(this.passionValue) && this.passionValue >= 0;
+  }
+  addDraftPassion(): void {
+    if (!this.upgrade || !this.canAddPassion || this.passionValue === null) return;
+    this.draftPassions.push({
+      passion: this.passionName.trim(), modifierNumber: this.passionValue,
+      objectOfPassion: '', modifier: String(this.passionValue),
+    });
+    this.passionName = '';
+    this.passionValue = null;
+  }
+  get proposedSkillName(): string {
+    const name = this.customSkillName.trim();
+    return name && this.draftEntryKind === 'language' ? 'Language (' + name + ')' : name;
+  }
+  get canCreateSkill(): boolean {
+    const name = this.proposedSkillName.toLowerCase();
+    return !!name && ![...this.character.skills.skills, ...this.character.skills.specialized, ...this.draftNewSkills]
+      .some(skill => skill.name.trim().toLowerCase() === name);
+  }
+  createDraftSkill(): void {
+    if (!this.upgrade || !this.canCreateSkill) return;
+    const language = this.draftEntryKind === 'language';
+    const category = language ? 'professional' : this.customSkillCategory;
+    const skill = new Skill(this.proposedSkillName, category !== 'standard',
+      ...(language ? ['int', 'cha'] : this.customSkillBase));
+    skill.category = category;
+    skill.custom = true;
+    this.draftAddedSkills.push(skill);
+    this.draftNewSkills.push(skill);
+    this.customSkillName = '';
+  }
   /** Professional skills from the catalogue that the character has not learned yet. */
   get addableSkills():Skill[] {
     const visible=new Set(visibleProfessionalSkills(this.character));
@@ -1049,6 +1237,8 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     }
     for(const [skill,delta] of this.draftSkills)skill.extraBonus=(Number(skill.extraBonus)||0)+delta;
     for(const skill of this.draftAddedSkills)skill.force=true;
+    this.character.skills.skills.push(...this.draftNewSkills);
+    this.character.passions.push(...this.draftPassions);
     this.discardUpgrade();
   }
   difficultyTarget(multiplier:number):number {return this.activeSkill?Math.ceil(this.skillValue(this.activeSkill)*multiplier):0;}

@@ -46,3 +46,33 @@
   --app-font-size-xs: 12px; --app-font-size-sm: 14px; --app-font-size-md: 16px;
   --app-font-size-lg: 20px; --app-font-size-xl: 28px; --app-font-size-2xl: 32px;
 }
+
+/* Tennla palette adapted from xe-n0x/mythras-tools, dev (4b8e741). */
+html[data-mythras-theme='tennla'] {
+  color-scheme: light;
+  --ui-canvas: #f6f3eb;
+  --ui-surface: #fffefa;
+  --ui-raised: #eee9dd;
+  --ui-hover: #d6e5e3;
+  --ui-hover-ink: #336675;
+  --ui-ink: #243337;
+  --ui-secondary: #405450;
+  --ui-muted: #596964;
+  --ui-border: #d9d6ca;
+  --ui-accent: #295562;
+  --ui-accent-hover: #336675;
+  --ui-accent-soft: #e4edeb;
+  --ui-olive: #264e57;
+  --ui-olive-soft: #e4edeb;
+  --ui-on-dark: #fffefa;
+  --ui-danger: #943b2d;
+  --ui-danger-soft: #f6e4dc;
+  --ui-success: #326444;
+  --ui-success-soft: #e6eedf;
+  --ui-warning: #795426;
+  --ui-warning-soft: #f4ebdb;
+  --ui-focus: #295562;
+  --ui-display: Georgia, 'Times New Roman', serif;
+  --ui-shadow: 0 1px 2px #2e333012, 0 4px 14px #463e3210;
+  --tennla-bronze: #a67a43;
+}

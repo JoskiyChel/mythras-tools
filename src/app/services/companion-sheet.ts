@@ -1,5 +1,5 @@
 import { Character } from '../model/character';
-import { Skill } from '../model/skill';
+import { Skill, SkillCategory } from '../model/skill';
 import { getDamageModifier, getSkillTotal } from './character-service.service';
 import { getMaximumHp, HitLocation, setCurrentHp } from './hit-points';
 import { HIT_LOCATION_ORDER } from './hit-locations';
@@ -247,57 +247,77 @@ export function findTraditionSkill(character:CompanionCharacter,name:string):Ski
     ||matching.find(skill=>skill.name===name)||matching[0]||null;
 }
 
-/** Legacy Mythras Tools treats each armour location as an equipped slot, no new
- * parallel list of armour pieces is introduced at this stage. */
+/** Legacy saved overrides still apply. By default use the full worn ENC. */
 export function armourPenalty(character: CompanionCharacter): number {
   const raw: unknown = character.equipment?.armorPenalty;
-  // An empty string or null in an old save means "no override", not zero.
-  if (raw !== undefined && raw !== null && raw !== '') {
-    const overridden = Number(raw);
-    if (Number.isFinite(overridden)) return overridden;
-  }
-  // Unlike the legacy getOnlyArmor helper (which halves worn ENC for load),
-  // the Armour Penalty uses the FULL ENC of every covered location.
-  const keys:HitLocation[]=HIT_LOCATION_ORDER;
-  const enc=keys.reduce((sum,loc)=>sum+Math.max(0,Number(character.equipment?.[loc]?.enc)||0),0);
-  return Math.ceil(enc/5);
+  if (raw !== undefined && raw !== null && raw !== '' && Number.isFinite(Number(raw))) return Number(raw);
+  const enc = HIT_LOCATION_ORDER.reduce((sum, loc) => sum + Math.max(0, Number(character.equipment?.[loc]?.enc) || 0), 0);
+  return Math.ceil(enc / 5);
 }
 
 export interface MovementSummary {
-  walking:number;running:number;sprinting:number;swimming:number;swimSkill:number;horizontalJump:number;verticalJump:number;
-  armourPenalty:number;athletics:number;heightMetres:number;
+  walking: number;
+  running: number;
+  sprinting: number;
+  runningWithoutBonus: number;
+  sprintingWithoutBonus: number;
+  swimming: number;
+  swimSkill: number;
+  climb: {easy: number; steep: number; sheer: number};
+  horizontalJump: number | null;
+  verticalJump: number | null;
+  armourPenalty: number;
+  athletics: number;
+  heightMetres: number;
 }
-/** Reuses Mythras Tools locomotion baselines with the Fatigue table (p.79),
- * full armour initiative penalty (p.58) and running/jumping adjustments (p.70). */
+
+/** Jumping and Armour Penalty to Initiative, Core Rules pp. 39, 58.
+ * Distances are shown in metres, with no minimum stride. */
+export function jumpDistance(move: Pick<MovementSummary, 'walking' | 'heightMetres' | 'athletics' | 'armourPenalty'>,
+  direction: 'horizontal' | 'vertical', runUp: boolean, critical = false): number | null {
+  if (move.walking <= 0) return 0;
+  if (move.heightMetres <= 0) return null;
+  const horizontal = direction === 'horizontal';
+  const base = move.heightMetres * (horizontal ? 2 : 0.5);
+  const levels = Math.max(0, Math.floor(move.athletics / 20));
+  const raw = runUp ? base + levels * (horizontal ? 1 : 0.2) : base / 2;
+  const penalty = Math.ceil(Math.max(0, move.armourPenalty) / 2) * (runUp ? 1 : 0.5);
+  return Math.max(0, raw - penalty + (critical ? 1 : 0));
+}
+
+/** Fatigue-adjusted movement with the existing pace multipliers and the
+ * Running, Swimming and Climbing armour adjustments. */
 export function movementSummary(character: CompanionCharacter,
-  tentative:Partial<Record<CharacteristicKey,number>>={},
-  improvements:{athletics?:number;swim?:number}={}): MovementSummary {
-  const athletics = character.skills.skills.find(s=>s.name==='Athletics');
-  const percent = athletics ? skillTotal(character,athletics,tentative,improvements.athletics||0) : 0;
-  const swim=character.skills.skills.find(s=>s.name==='Swim');
-  const swimSkill=swim?skillTotal(character,swim,tentative,improvements.swim||0):0;
+  tentative: Partial<Record<CharacteristicKey, number>> = {},
+  improvements: {athletics?: number; swim?: number} = {}): MovementSummary {
+  const athletics = character.skills.skills.find(skill => skill.name === 'Athletics');
+  const percent = athletics ? skillTotal(character, athletics, tentative, improvements.athletics || 0) : 0;
+  const swim = character.skills.skills.find(skill => skill.name === 'Swim');
+  const swimSkill = swim ? skillTotal(character, swim, tentative, improvements.swim || 0) : 0;
   const walking = movement(character);
-  const bonus = Math.floor(percent/25) * 0.5;
-  const jumpBonus = Math.floor(percent/20);
-  const h = Number(character.height) || 0;
-  const heightMetres = h < 10 ? h : h/100;
-  const penalty=armourPenalty(character);
-  const standingJumpPenalty=Math.ceil(penalty/2)/2;
-  const jumpPenalty=Math.ceil(penalty/2);
-  const immobile=walking===0;
+  const bonus = Math.max(0, Math.floor(percent / 25));
+  const h = Number(character.height);
+  const heightMetres = Number.isFinite(h) && h > 0 ? (h < 10 ? h : h / 100) : 0;
+  const penalty = Math.max(0, armourPenalty(character));
+  const baseline = {walking, heightMetres, athletics: percent, armourPenalty: penalty};
+  const pace = (multiplier: number, skillBonus: number) =>
+    walking ? Math.max(0, (walking + skillBonus) * multiplier - penalty) : 0;
+  const swimmingSpeed = walking + Math.max(0, Math.floor(swimSkill / 20));
   return {
-    walking,
-    // Original sheet: movement rate + one metre per full 20% Swim.
-    // Use the same fatigue-adjusted baseline as the other movement modes.
-    swimming:immobile?0:Math.max(0,walking+Math.floor(swimSkill/20)),
+    ...baseline,
+    swimming: !walking ? 0 : penalty > 0 ? Math.ceil(swimmingSpeed / 2) - penalty : swimmingSpeed,
     swimSkill,
-    running:immobile?0:Math.max(0,(walking+bonus)*3-penalty),
-    sprinting:immobile?0:Math.max(0,(walking+bonus)*5-penalty),
-    horizontalJump:immobile?0:Math.max(0,heightMetres*2+jumpBonus-jumpPenalty),
-    verticalJump:immobile?0:Math.max(0,heightMetres*2+jumpBonus*0.2-jumpPenalty),
-    armourPenalty:penalty,
-    athletics:percent,
-    heightMetres
+    running: pace(3, bonus / 2),
+    sprinting: pace(5, bonus),
+    runningWithoutBonus: pace(3, 0),
+    sprintingWithoutBonus: pace(5, 0),
+    climb: {
+      easy: Math.max(0, walking - Math.ceil(penalty / 2)),
+      steep: Math.max(0, walking - penalty),
+      sheer: Math.max(0, walking - 2 * penalty),
+    },
+    horizontalJump: jumpDistance(baseline, 'horizontal', true),
+    verticalJump: jumpDistance(baseline, 'vertical', true),
   };
 }
 
@@ -315,14 +335,25 @@ export function visibleProfessionalSkills(character: CompanionCharacter): Skill[
   });
 }
 
-/** Names are descriptive, not guaranteed IDs: two distinct skills with the same
- * name are retained. No re-hydration or JSON normalisation is done by the sheet. */
-export function skillGroups(character: CompanionCharacter): {name:string;skills:Skill[]}[] {
-  const standard=character.skills.skills.filter(s=>s&&!s.professional);
+const MAGIC_SKILLS = ['Folk Magic', 'Binding', 'Trance', 'Meditation', 'Mysticism',
+  'Invocation', 'Shaping', 'Devotion', 'Exhort'];
+
+export function sheetSkillCategory(skill: Skill): SkillCategory {
+  if (skill.category) return skill.category;
+  if (MAGIC_SKILLS.some(name => skill.name === name || skill.name.startsWith(name + ' ('))) return 'magic';
+  return skill.professional ? 'professional' : 'standard';
+}
+
+/** Keep distinct skill objects even when their names match. */
+export function skillGroups(character: CompanionCharacter, added: readonly Skill[] = []): {name:string;skills:Skill[]}[] {
+  const visible = [...new Set([...character.skills.skills.filter(skill => skill && !skill.professional),
+    ...visibleProfessionalSkills(character), ...added])];
+  const standard = visible.filter(skill => sheetSkillCategory(skill) === 'standard');
   return [
-    {name:'Сопротивления',skills:standard.filter(s=>RESISTANCES.includes(s.name))},
-    {name:'Стандартные навыки',skills:standard.filter(s=>!RESISTANCES.includes(s.name))},
-    {name:'Профессиональные навыки',skills:visibleProfessionalSkills(character)},
+    {name: 'Сопротивления', skills: standard.filter(skill => RESISTANCES.includes(skill.name))},
+    {name: 'Стандартные навыки', skills: standard.filter(skill => !RESISTANCES.includes(skill.name))},
+    {name: 'Профессиональные навыки', skills: visible.filter(skill => sheetSkillCategory(skill) === 'professional')},
+    {name: 'Магические навыки', skills: visible.filter(skill => sheetSkillCategory(skill) === 'magic')},
   ];
 }
 

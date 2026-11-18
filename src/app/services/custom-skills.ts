@@ -29,7 +29,7 @@ export function removeProfessionalSkillSelection(character: Character, skill: Sk
 }
 export function isCustomSkill(skill: Skill): boolean {
   builtInNames ||= new Set(new Character().skills.skills.map(s => s.name));
-  return !!skill && skill.professional && (skill.custom === true || !builtInNames.has(skill.name));
+  return !!skill && (skill.custom === true || (skill.professional && !builtInNames.has(skill.name)));
 }
 
 function references(character: Character, skill: Skill): Skill[] {

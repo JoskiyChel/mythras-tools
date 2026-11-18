@@ -1,6 +1,12 @@
 import { Equipment } from './equipment';
 import { Item } from './item';
 import { CharacterWeapon } from './character-weapon';
+import { HitLocation } from '../services/hit-locations';
+
+export interface SpareArmour {
+    location: HitLocation;
+    piece: Equipment;
+}
 export class CharacterEquipment {
     head: Equipment;
     chest: Equipment;
@@ -11,6 +17,7 @@ export class CharacterEquipment {
     rightLeg: Equipment;
     weapons: CharacterWeapon[];
     items : Item[];
+    spareArmour?: SpareArmour[];
 
     equipmentEnc : number;
     armourEnc : number;

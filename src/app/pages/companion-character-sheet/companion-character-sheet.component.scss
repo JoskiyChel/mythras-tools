@@ -628,3 +628,157 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
   .check-die.rolling, .check-result.rolling, .dice-result.rolling { animation:none; }
 }
 .dice-history li { grid-template-columns:minmax(0,1fr) auto auto; }
+
+.wound-status {
+  display: block;
+  color: var(--ui-secondary);
+  font-size: 11px;
+  font-weight: 600;
+
+  &.minor { color: var(--ui-olive); }
+  &.serious { color: var(--ui-danger); }
+  &.major { color: var(--ui-on-dark); background: var(--ui-danger); border-radius: 3px; padding-inline: 4px; }
+}
+.location-row .wound-status { grid-column: 1 / -1; justify-self: start; }
+.effects-list {
+  max-height: min(16rem, 35vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.injury-effects { margin-block-start: .75rem; }
+.injury-effects h3, .weapon-group h3, .movement-section h3 {
+  font-size: 1rem;
+  margin: 0 0 .4rem;
+}
+.weapon-group + .weapon-group, .movement-section { margin-block-start: 1rem; }
+
+.draft-entry {
+  display: grid;
+  gap: .5rem;
+
+  label { display: grid; gap: .25rem; font-size: .8rem; }
+  input, select {
+    min-width: 0;
+    max-width: 100%;
+    color: var(--ui-ink);
+    background: var(--ui-canvas);
+    border: 1px solid var(--ui-border);
+    border-radius: 5px;
+    padding: .35rem;
+    font: inherit;
+  }
+}
+.draft-bases { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.movement-mode { display: block; margin-block: .5rem; }
+.movement-stats button { text-align: left; }
+.movement-stats small { display: block; font-size: 11px; color: var(--ui-secondary); }
+.magic-rules-tables { display: flex; flex-wrap: wrap; gap: .5rem; }
+.magic-rule-table {
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+  margin-block: .4rem;
+  white-space: normal;
+
+  caption { text-align: left; font-size: .8rem; color: var(--ui-secondary); padding-block: .25rem; }
+  th, td { padding: .25rem .45rem; font-size: .75rem; white-space: normal; }
+}
+.spirit-list { margin-block: .5rem; padding-inline-start: 1.2rem; }
+.armour-summary { flex-wrap: wrap; }
+.armour-actions { flex-wrap: wrap; justify-content: flex-end; }
+.armour-actions select { max-width: 100%; }
+@media (max-width: 680px) {
+  .armour-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .armour-actions { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+.theme-select {
+  min-height: 32px;
+  max-width: 100%;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ui-ink);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+}
+
+:host-context(html[data-mythras-theme='tennla']) {
+  .companion-shell {
+    background:
+      radial-gradient(ellipse 48% 27% at 5% 3%, #e1d5bc80 0%, transparent 78%),
+      radial-gradient(ellipse 36% 32% at 98% 32%, #b4c9c72e 0%, transparent 90%),
+      repeating-linear-gradient(90deg, transparent 0 119px, #4a574407 120px, transparent 121px),
+      var(--ui-canvas);
+    padding-block-start: clamp(8px, 2vw, 28px);
+  }
+  .masthead {
+    height: auto;
+    margin-inline: auto;
+    max-width: min(90%, 1438px);
+    padding: 12px clamp(10px, 1.45vw, 24px);
+    color: #352b20;
+    background: linear-gradient(110deg, var(--ui-surface), #f4ede0 52%, var(--ui-accent-soft));
+    border: 1px solid var(--ui-border);
+    border-inline-start: 4px solid var(--tennla-bronze);
+    border-radius: var(--ui-radius-panel);
+    box-shadow: var(--ui-shadow);
+  }
+  .tennla-brand {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font: 600 clamp(1.8rem, 3vw, 2.8rem) / 1.05 var(--ui-display);
+  }
+  .tennla-brand small {
+    display: block;
+    margin: 4px 0 0;
+    color: var(--ui-accent);
+    font: 700 .72rem / 1.2 var(--ui-font);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .tennla-seal {
+    width: clamp(34px, 4vw, 54px);
+    aspect-ratio: 1;
+    border: 1px solid var(--tennla-bronze);
+    border-radius: 50%;
+    background:
+      radial-gradient(circle, #f4ebdb 0 23%, #a75940 24% 29%, #f4ebdb 30% 36%, transparent 37% 55%, #f4ebdb 56%),
+      repeating-conic-gradient(var(--tennla-bronze) 0deg 6deg, #f4ebdb 7deg 30deg);
+    box-shadow: 0 0 0 3px #fff9, 0 0 0 4px #af824655;
+  }
+  .masthead-tools button, .masthead-tools a {
+    color: var(--ui-accent);
+    background: var(--ui-surface);
+    border-color: var(--ui-border);
+  }
+  .masthead-tools button:hover, .masthead-tools a:hover { background: var(--ui-accent-soft); }
+  .character-header { background: linear-gradient(105deg, #f4ede0, var(--ui-accent-soft)); border-color: var(--ui-border); }
+  .character-header h1 { color: var(--ui-ink); }
+  .character-header::after { display: none; }
+  .card { box-shadow: var(--ui-shadow); }
+  .overlay { background: rgb(28 51 57 / .65); backdrop-filter: blur(2px); }
+  .dialog { border-top: 3px solid var(--tennla-bronze); }
+  .body-zone { background: linear-gradient(160deg, #e4edeb, #eee9dd); }
+  .body-plate { fill: #e5ece4; stroke: #bbcbc0; }
+  .body-joint { fill: #b1cbc7; stroke: #516e64; }
+  .body-location { stroke: #516e64; }
+  .body-location:hover, .body-location.selected { stroke: var(--tennla-bronze); }
+  .body-details { stroke: #516e64; }
+  .body-hand, .body-foot { stroke: #516e64; }
+  .body-hair { fill: #45635a; }
+  .location-row.selected { border-color: var(--tennla-bronze); }
+
+  @media (min-width: 1280px) {
+    .companion-shell {
+      background:
+        url('../../../assets/tennla/solar-city.svg') left .5vw top 265px / clamp(45px, 4vw, 78px) auto no-repeat,
+        url('../../../assets/tennla/sea-voyage.svg') right .5vw top 160px / clamp(45px, 4vw, 78px) auto no-repeat,
+        repeating-linear-gradient(90deg, transparent 0 119px, #4a574407 120px, transparent 121px),
+        var(--ui-canvas);
+    }
+    .sheet-layout, .save-status { max-width: min(90%, 1438px); }
+  }
+}

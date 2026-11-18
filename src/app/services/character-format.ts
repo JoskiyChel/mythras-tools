@@ -62,6 +62,14 @@ export function hydrateCharacter(saved: unknown): Character {
     for (const key of ['folk', 'miracles', 'sorcery', 'custom']) {
         (character.magic as any)[key] = Array.isArray((character.magic as any)[key]) ? (character.magic as any)[key] : [];
     }
+    if (character.magic.spiritRecords !== undefined) {
+        character.magic.spiritRecords = Array.isArray(character.magic.spiritRecords)
+            ? character.magic.spiritRecords.filter(entry => record(entry) && typeof entry.name === 'string') : [];
+    }
+    if (character.equipment.spareArmour !== undefined) {
+        character.equipment.spareArmour = Array.isArray(character.equipment.spareArmour)
+            ? character.equipment.spareArmour.filter(entry => record(entry) && record(entry.piece)) : [];
+    }
     character.magic.path = restore(new MysticPath(), character.magic.path);
     for (const key of ['augmentations', 'invocations', 'enhancements']) {
         if (!Array.isArray((character.magic.path as any)[key]))
