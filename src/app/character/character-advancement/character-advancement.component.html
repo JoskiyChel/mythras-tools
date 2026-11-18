@@ -1,0 +1,173 @@
+<button mat-flat-button color="primary" type="button" aria-haspopup="dialog" (click)="open(panel)">Использовать бросок опыта</button>
+<dialog #panel aria-labelledby="advancement-title" (click)="dismissOnBackdrop($event, panel)" (close)="dialogOpen = false">
+  <header>
+    <h2 id="advancement-title">Броски опыта</h2>
+    <button mat-button type="button" autofocus (click)="panel.close()">Готово</button>
+  </header>
+  <div class="advancement-body" *ngIf="dialogOpen">
+    <div class="balance">
+      <label>Доступно бросков
+        <input #balanceInput type="number" min="0" step="1" [value]="balance(draft)"
+          (change)="changeBalance(balanceInput.valueAsNumber); balanceInput.value = '' + balance(draft)">
+      </label>
+      <button mat-stroked-button type="button" aria-label="Уменьшить остаток бросков опыта"
+        (click)="changeBalance(balance(draft) - 1)" [disabled]="balance(draft) === 0">−1</button>
+    </div>
+    <p class="draft-note">Результаты появятся в черновике «Становления». Сохраните их кнопкой «Применить» в листе.</p>
+    <nav aria-label="Способ развития">
+      <button mat-stroked-button *ngFor="let item of modes" type="button" [attr.aria-pressed]="mode === item.key"
+        (click)="mode = item.key; resetInput()">{{item.label}}</button>
+    </nav>
+    <ng-template #skillChoice>
+      <label>Навык
+        <select [(ngModel)]="skillIndex">
+          <option [ngValue]="null">Выберите навык</option>
+          <ng-container *ngFor="let option of options; index as i">
+            <option *ngIf="option.learned === (mode !== 'experience' || experienceKind !== 'learn')" [ngValue]="i">{{skillLabel(option.skill)}}</option>
+          </ng-container>
+        </select>
+      </label>
+      <small *ngIf="selected?.skill?.trainedSinceExperience">Повторная тренировка доступна после повышения за бросок опыта.</small>
+    </ng-template>
+    <ng-template #statChoice>
+      <label>Характеристика
+        <select [(ngModel)]="stat"><option *ngFor="let key of keys" [ngValue]="key">{{key | uppercase}}</option></select>
+      </label>
+    </ng-template>
+    <section *ngIf="mode === 'experience'">
+      <label>Действие
+        <select [(ngModel)]="experienceKind" (ngModelChange)="resetInput()">
+          <option value="experience">Повысить изученный навык</option>
+          <option value="award">Записать награду ведущего</option>
+          <option value="passion">Изменить страсть с записанным процентом</option>
+          <option value="fumble">Прибавка за критический провал</option>
+          <option value="learn">Изучить новый профессиональный навык</option>
+          <option value="regime">Режим повышения характеристики</option>
+          <option value="permanent">Постоянное повышение характеристики (опционально)</option>
+          <option value="magic">Записать изученную магическую способность</option>
+        </select>
+      </label>
+      <ng-container [ngSwitch]="experienceKind">
+        <div class="fields" *ngSwitchCase="'award'">
+          <label>Награда ведущего<input type="number" min="0" step="1" [(ngModel)]="value"></label>
+          <label>Модификатор опыта по решению ведущего<input type="number" step="1" [(ngModel)]="modifier"></label>
+          <small>Укажите согласованный модификатор. Поддержание выбранных режимов вычитается из награды.</small>
+        </div>
+        <ng-container *ngSwitchCase="'experience'"><ng-container *ngTemplateOutlet="skillChoice"></ng-container></ng-container>
+        <ng-container *ngSwitchCase="'passion'">
+          <label>Страсть
+            <select [(ngModel)]="passionIndex"><option [ngValue]="null">Выберите страсть</option>
+              <ng-container *ngFor="let passion of draft.passions; index as i">
+                <option *ngIf="passion?.passion && passion.modifierNumber != null" [ngValue]="i">{{passion.passion}} · {{passion.modifierNumber}}%</option>
+              </ng-container>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" [(ngModel)]="reducePassion">Уменьшить по решению ведущего</label>
+        </ng-container>
+        <ng-container *ngSwitchCase="'fumble'">
+          <ng-container *ngTemplateOutlet="skillChoice"></ng-container>
+          <label class="check"><input type="checkbox" [(ngModel)]="confirmed">Подтверждаю провал в этом периоде опыта</label>
+        </ng-container>
+        <ng-container *ngSwitchCase="'learn'">
+          <ng-container *ngTemplateOutlet="skillChoice"></ng-container>
+          <label>Источник обучения<input [(ngModel)]="mentor"></label>
+          <label>Игровой период изучения<input [(ngModel)]="period"></label>
+          <label class="check"><input type="checkbox" [(ngModel)]="confirmed">Полный месяц завершён, остальные условия выполнены · 3 ER</label>
+        </ng-container>
+        <ng-container *ngSwitchCase="'regime'">
+          <ng-container *ngTemplateOutlet="statChoice"></ng-container>
+          <div class="fields">
+            <label>Максимум вида<input type="number" min="1" [(ngModel)]="maximum"></label>
+            <label>Поддерживаемые ступени<input type="number" min="0" [(ngModel)]="value"></label>
+          </div>
+          <small>Запишите действующий режим. Одна ступень уменьшает регулярную награду на 1 ER. После прекращения ступени уходят при получении наград. 0 прекращает режим.</small>
+          <label class="check"><input type="checkbox" [(ngModel)]="confirmed">Ведущий подтвердил режим и максимум вида</label>
+        </ng-container>
+        <ng-container *ngSwitchCase="'permanent'">
+          <ng-container *ngTemplateOutlet="statChoice"></ng-container>
+          <div class="fields"><label>Минимум вида<input type="number" min="0" [(ngModel)]="minimum"></label>
+            <label>Максимум вида<input type="number" min="1" [(ngModel)]="maximum"></label></div>
+          <label class="check"><input type="checkbox" [(ngModel)]="confirmed">Ведущий использует опциональное правило со с. 73</label>
+        </ng-container>
+        <ng-container *ngSwitchCase="'magic'">
+          <label>Раздел<select [(ngModel)]="tradition">
+            <option value="folk">Народная магия</option><option value="sorcery">Колдовство</option><option value="miracles">Чудеса</option>
+            <option value="augmentations">Мистицизм · усиления</option><option value="invocations">Мистицизм · призывания</option>
+            <option value="enhancements">Мистицизм · улучшения</option>
+          </select></label>
+          <div class="fields"><label>Название<input [(ngModel)]="mentor"></label><label>Согласованный расход ER<input type="number" min="1" [(ngModel)]="value"></label></div>
+          <label>Завершённое обучение<input [(ngModel)]="period"></label>
+          <label>Описание<textarea rows="2" [(ngModel)]="magicDescription"></textarea></label>
+          <label class="check"><input type="checkbox" [(ngModel)]="confirmed">Ведущий подтвердил доступ, условия и затраты · Core Rules, с. 118–119</label>
+        </ng-container>
+      </ng-container>
+      <div class="fields" *ngIf="experienceKind === 'experience' || experienceKind === 'passion'">
+        <label>d100 вручную <input type="text" inputmode="numeric" [(ngModel)]="manualD100" placeholder="Случайный"></label>
+        <label>d4 вручную, если требуется <input type="text" inputmode="numeric" [(ngModel)]="manualD4" placeholder="Случайный"></label>
+        <small>1 бросок опыта. Если d100 + постоянный INT равен текущему постоянному значению или выше, прибавляется 1d4 + 1. Иначе прибавляется 1.</small>
+      </div>
+      <button mat-flat-button color="primary" type="button" (click)="addExperience()">Добавить в черновик</button>
+    </section>
+
+    <section *ngIf="mode === 'training'">
+      <p>Один навык за полную игровую неделю. Расход ER отсутствует. Core Rules, с. 73.</p>
+      <ng-container *ngIf="training as ongoing; else planTraining">
+        <p><strong>{{ongoing.skill.name}}</strong> · {{ongoing.mentor}} · {{ongoing.period}} · {{ongoing.terms}}</p>
+        <label>Завершённая игровая неделя<input [(ngModel)]="period"></label>
+        <div class="fields">
+          <ng-container *ngIf="ongoing.teach !== undefined">
+            <label *ngIf="resolvedTeach === undefined">Teach {{ongoing.teach}}% · d100 вручную<input type="text" inputmode="numeric" [(ngModel)]="manualTeach" placeholder="Случайный"></label>
+            <button mat-stroked-button *ngIf="resolvedTeach === undefined" type="button" (click)="resolveTeach()">Определить результат Teach</button>
+            <small *ngIf="resolvedTeach !== undefined">Результат Teach на d100 · {{resolvedTeach}}</small>
+          </ng-container>
+          <label *ngIf="currentTrainingExpression && currentTrainingExpression !== '0'">Кубик прироста вручную
+            <input type="text" inputmode="numeric" [(ngModel)]="manualTraining" placeholder="Случайный">
+            <small>Прирост · {{currentTrainingExpression}}</small>
+          </label>
+          <small *ngIf="currentTrainingExpression === '0'">Тренировка завершится без прироста.</small>
+        </div>
+        <label class="check"><input type="checkbox" [(ngModel)]="confirmed">Подтверждаю завершение полной недели</label>
+        <div class="actions">
+          <button mat-flat-button color="primary" type="button" [disabled]="!confirmed || !currentTrainingExpression" (click)="finishTraining()">Записать результат</button>
+          <button mat-stroked-button type="button" (click)="add({kind:'cancelTraining'}, 'Отмена тренировки')">Отменить тренировку</button>
+        </div>
+      </ng-container>
+      <ng-template #planTraining>
+        <ng-container *ngTemplateOutlet="skillChoice"></ng-container>
+        <label>Наставник<input [(ngModel)]="mentor"></label>
+        <div class="fields">
+          <label>Навык наставника, %<input type="number" min="0" [(ngModel)]="mentorSkill"></label>
+          <label>Teach, % (у учителя)<input type="number" min="1" [(ngModel)]="teach"></label>
+        </div>
+        <small *ngIf="trainingCost !== undefined">Ориентир цены за неделю · {{trainingCost}} серебра<span *ngIf="trainingDie"> · базовый прирост {{trainingDie}}</span></small>
+        <small>При разнице ровно 20 п. п. используется 1d2 по правилу Теннлы. Цена и условия определяются ведущим.</small>
+        <small *ngIf="!teach">Наставник без Teach обучает одного ученика за раз.</small>
+        <small *ngIf="teach">Ориентир размера группы · Teach ÷ 10. Доступность наставника подтверждает ведущий.</small>
+        <label>Планируемая игровая неделя<input [(ngModel)]="period"></label>
+        <label>Оплата или другие условия<input [(ngModel)]="terms"></label>
+        <label class="check"><input type="checkbox" [(ngModel)]="confirmed">Наставник доступен и условия согласованы</label>
+        <button mat-flat-button color="primary" type="button" [disabled]="!confirmed" (click)="startTraining()">Запланировать тренировку</button>
+      </ng-template>
+    </section>
+
+    <p *ngIf="error" class="error" role="alert">{{error}}</p>
+    <section class="preview" *ngIf="entries.length">
+      <h3>Предпросмотр</h3>
+      <ol>
+        <li *ngFor="let entry of entries; index as i">
+          <span>{{entry.description}}</span>
+          <button mat-button type="button" (click)="remove(i)" [attr.aria-label]="'Убрать: ' + entry.description">Убрать</button>
+        </li>
+      </ol>
+      <dl *ngIf="rows.length">
+        <div *ngFor="let row of rows">
+          <dt>{{row.label}}</dt><dd>{{row.before}} → {{row.after}} <span *ngIf="row.change">({{row.change}})</span></dd>
+        </div>
+      </dl>
+      <div class="actions">
+        <button mat-stroked-button type="button" (click)="clear()">Отменить изменения опыта</button>
+        <button mat-flat-button color="primary" type="button" (click)="panel.close()">К листу</button>
+      </div>
+    </section>
+  </div>
+</dialog>

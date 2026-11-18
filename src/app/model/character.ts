@@ -1,4 +1,5 @@
 import { CharacterEquipment } from './character-equipment';
+import type { CharacterAdvancement } from './character-advancement';
 import { CharacterPassions } from './character-passions';
 import { Rollable } from './rollable';
 import { CharacterFamily } from "./character-family";
@@ -19,6 +20,7 @@ export class Character {
     concept : string;
     background : string;
     skills : CharacterSkills;
+    advancement?: CharacterAdvancement;
     height: number;
     weight: number;
     frame : string;

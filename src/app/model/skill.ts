@@ -12,6 +12,8 @@ export class Skill {
     cultureBonus : number;
     careerBonus : number;
     extraBonus : number;
+    fumbleImprovementClaimed?: boolean;
+    trainedSinceExperience?: boolean;
     add : number;
     divide : number;
     multiply : number;

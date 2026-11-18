@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { hydrateCharacter } from '../../services/character-format';
 import { SheetModifier } from '../../services/companion-sheet';
+import { AdvancementEntry, advancementSkills, applyAdvancement } from '../../services/character-advancement';
 import { CompanionCharacterSheetComponent } from './companion-character-sheet.component';
 
 describe('Companion permanent advancement', () => {
@@ -218,6 +219,81 @@ describe('Companion permanent advancement', () => {
     expect(component.attrDelta('init')).toBe(0);
   });
 
+  it('combines experience and manual advances in one preview and one undo', () => {
+    component.character.skills.dex = 18;
+    const {address, skill} = advancementSkills(component.character).find(entry => entry.skill.name === 'Athletics')!;
+    const before = component.skillValue(skill);
+    component.setExperienceBalance(7);
+    component.ngDoCheck();
+    const entries:AdvancementEntry[] = [
+      {description:'Athletics', action:{kind:'experience', skill:address, d100:100, d4:3}},
+      {description:'DEX', action:{kind:'permanent', key:'dex', minimum:18, maximum:20}},
+    ];
+    const draft = () => component.setExperienceDraft({
+      entries, projected:applyAdvancement(component.character,entries.map(entry=>entry.action)),
+    });
+    component.beginUpgrade();
+    draft();
+    component.alterSkill(skill, 2);
+    expect(component.availableExperienceRolls).toBe(5);
+    expect(component.directSkillDelta(skill)).toBe(6);
+    expect(component.statChange('dex')).toBe(1);
+    expect(component.attrDelta('init')).toBe(1);
+    expect(component.character.advancement?.experienceRolls).toBe(7);
+    component.discardUpgrade();
+    expect(component.skillValue(skill)).toBe(before);
+    expect(component.availableExperienceRolls).toBe(7);
+
+    component.beginUpgrade();
+    draft();
+    component.alterSkill(skill, 2);
+    const projectedSkill = component.skillValue(skill);
+    component.applyUpgrade();
+    component.ngDoCheck();
+    expect(component.skillValue(skill)).toBe(projectedSkill);
+    expect(component.availableExperienceRolls).toBe(5);
+    component.undoChange();
+    expect(component.availableExperienceRolls).toBe(7);
+    expect(component.charValue('dex')).toBe(18);
+  });
+
+  it('keeps profile changes in the advancement draft until applied', () => {
+    component.character.height = 170;
+    component.setProfileField('height', 180);
+    expect(component.profileValue('height')).toBe(170);
+    component.beginUpgrade();
+    component.setProfileField('frame', 'Heavy');
+    component.setProfileField('height', 180);
+    component.setProfileField('weight', 78);
+    expect(component.move.heightMetres).toBe(1.8);
+    expect(component.character.height).toBe(170);
+    component.discardUpgrade();
+    expect(component.profileValue('height')).toBe(170);
+    component.beginUpgrade();
+    component.setProfileField('height', 182);
+    expect(component.hasUpgrade).toBeTrue();
+    component.applyUpgrade();
+    expect(component.character.height).toBe(182);
+  });
+
+  it('keeps Movement open during Athletics and records the activity in its history', () => {
+    component.movementDialog = true;
+    component.openMovementCheck('Прыжок');
+    expect(component.augmentCandidates.length).toBeGreaterThan(12);
+    expect(component.augmentCandidates).not.toContain(component.activeSkill!);
+    component.augmentQuery = 'brawn';
+    expect(component.augmentCandidates.map(skill=>skill.name)).toEqual(['Brawn']);
+    component.setCheckMode('manual');
+    component.manualCheckRoll = 1;
+    component.rollCheck();
+    component.onEscape();
+    expect(component.activeSkill).toBeNull();
+    expect(component.movementDialog).toBeTrue();
+    expect(component.athleticsHistory[0]).toEqual(jasmine.objectContaining({activity:'Прыжок', roll:1}));
+    component.onEscape();
+    expect(component.movementDialog).toBeFalse();
+  });
+
   it('shows effect modifiers with the same labels as the editor', () => {
     expect(component.modifierLabel({kind:'characteristic',key:'str',amount:1}))
       .toBe('Характеристика: STR +1');
@@ -396,7 +472,7 @@ describe('Companion permanent advancement', () => {
   it('opens an Athletics check for climbing with only rollable difficulties', () => {
     component.movementDialog = true;
     component.openMovementCheck('Лазание');
-    expect(component.movementDialog).toBeFalse();
+    expect(component.movementDialog).toBeTrue();
     expect(component.activeSkill?.name).toBe('Athletics');
     expect(component.selectedDifficulty.name).toBe('Standard');
     expect(component.difficulties.map(step => step.name)).toEqual(['Very Easy', 'Easy', 'Standard', 'Hard', 'Formidable', 'Herculean']);

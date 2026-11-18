@@ -27,6 +27,7 @@ const TOP_LEVEL_LABELS: Record<string, string> = {
   skills: 'навыки',
   hp: 'максимальные HP',
   companion: 'эффекты и травмы',
+  advancement: 'броски опыта и развитие',
 };
 
 function parse(value: string): JsonObject | null {

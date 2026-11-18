@@ -91,10 +91,10 @@
             <button class="skill-name" type="button" (click)="openSkill(skill)" [title]="skill.name">{{skill.name}}</button>
             <div class="skill-value">
               <ng-container *ngIf="upgrade">
-                <span class="value-old" *ngIf="!isDraftAdded(skill)">{{oldSkillValue(skill)}}</span>
-                <span class="value-new" *ngIf="isDraftAdded(skill)">новый</span>
-                <span class="change-value" [class.negative]="(draftSkills.get(skill) || 0) < 0" *ngIf="draftSkills.get(skill)">
-                  {{(draftSkills.get(skill) || 0) > 0 ? '+' : ''}}{{draftSkills.get(skill)}}
+                <span class="value-old" *ngIf="!isNewSkill(skill)">{{oldSkillValue(skill)}}</span>
+                <span class="value-new" *ngIf="isNewSkill(skill)">новый</span>
+                <span class="change-value" [class.negative]="change < 0" *ngIf="directSkillDelta(skill) as change">
+                  {{change > 0 ? '+' : ''}}{{change}}
                 </span>
                 <span class="change-indirect" *ngIf="indirectSkillDelta(skill)">↗ {{indirectSkillDelta(skill) > 0 ? '+' : ''}}{{indirectSkillDelta(skill)}}</span>
                 <button class="step" type="button" (click)="alterSkill(skill,-1)" aria-label="Уменьшить навык">−</button>
@@ -108,7 +108,9 @@
           <h3>Страсти</h3>
           <div class="skill-row" *ngFor="let passion of visiblePassions">
             <span class="skill-name readonly">{{passion.passion || 'Не задана'}} <small *ngIf="draftPassions.includes(passion)">Новая</small></span>
-            <span class="value-old">{{passion.modifierNumber != null ? passion.modifierNumber + '%' : (passion.modifier || '—')}}</span>
+            <span class="value-old">{{passion.modifierNumber != null ? passion.modifierNumber + '%' : (passion.modifier || '—')}}
+              <span class="attr-delta" *ngIf="passionDelta(passion) as change" [class.negative]="change < 0">{{deltaText(change)}}</span>
+            </span>
           </div>
         </section>
       </div>
@@ -122,8 +124,11 @@
             <h1>{{character.name || 'Безымянный персонаж'}}</h1>
             <p>{{character.species || 'Вид не указан'}} · {{character.culture || 'Культура не указана'}} · {{character.career || 'Карьера не указана'}}</p>
           </div>
-          <span class="year-label">MYTHRAS CHARACTER SHEET</span>
+          <app-character-advancement *ngIf="upgrade" [character]="character"
+            [entries]="experienceEntries" [projected]="experienceProjection" (draftChanged)="setExperienceDraft($event)">
+          </app-character-advancement>
         </div>
+        <p class="experience-error" *ngIf="experienceError" role="alert">{{experienceError}}</p>
         <div class="character-columns">
           <!-- Anatomical plate: wounds change the part itself -->
           <div class="body-zone">
@@ -249,23 +254,31 @@
                 <div class="characteristics" [class.upgrade]="upgrade">
                   <div class="characteristic" *ngFor="let key of characteristics">
                     <span>{{key | uppercase}}</span>
-                    <strong [class.highlight-result]="upgrade && draftStats[key]">{{charValue(key)}}</strong>
+                    <strong [class.highlight-result]="upgrade && statChange(key)">{{charValue(key)}}</strong>
                     <div class="upgrade-edit" *ngIf="upgrade">
                       <button type="button" (click)="alterStat(key,-1)">−</button>
-                      <em [class.negative]="(draftStats[key] || 0) < 0">{{draftStats[key] || '·'}}</em>
+                      <em [class.negative]="statChange(key) < 0">{{statChange(key) || '·'}}</em>
                       <button type="button" (click)="alterStat(key,1)">+</button>
                     </div>
                   </div>
                 </div>
                 <div class="identity-mini">
-                  <label>Frame <input [(ngModel)]="character.frame" aria-label="Frame"></label>
-                  <label>Рост, см <input type="number" [(ngModel)]="character.height" aria-label="Рост в сантиметрах"></label>
-                  <label>Вес, кг <input type="number" [(ngModel)]="character.weight" aria-label="Вес в килограммах"></label>
+                  <label>Frame <input [ngModel]="profileValue('frame')" [readOnly]="!upgrade" (ngModelChange)="setProfileField('frame',$event)" aria-label="Frame"></label>
+                  <label>Рост, см <input type="number" [ngModel]="profileValue('height')" [readOnly]="!upgrade" (ngModelChange)="setProfileField('height',$event)" aria-label="Рост в сантиметрах"></label>
+                  <label>Вес, кг <input type="number" [ngModel]="profileValue('weight')" [readOnly]="!upgrade" (ngModelChange)="setProfileField('weight',$event)" aria-label="Вес в килограммах"></label>
                 </div>
               </div>
               <div class="numbers-grid">
                 <div class="attribute metric"><small>Damage Modifier</small><strong>{{damage}}<span class="attr-delta" [class.negative]="damageDelta < 0" *ngIf="upgrade && damageDelta">{{deltaText(damageDelta)}}</span></strong></div>
                 <div class="attribute metric"><small>Experience Modifier</small><strong>{{attr('expMod') >= 0 ? '+' : ''}}{{attr('expMod')}}<span class="attr-delta" [class.negative]="attrDelta('expMod') < 0" *ngIf="upgrade && attrDelta('expMod')">{{deltaText(attrDelta('expMod'))}}</span></strong></div>
+                <div class="attribute metric experience-counter">
+                  <label for="sheet-experience-balance">Броски опыта</label>
+                  <input #sheetExperienceBalance id="sheet-experience-balance" type="number" min="0" step="1"
+                    [value]="availableExperienceRolls"
+                    (change)="setExperienceBalance(sheetExperienceBalance.valueAsNumber); sheetExperienceBalance.value = '' + availableExperienceRolls"
+                    [attr.aria-describedby]="experienceBalanceError ? 'sheet-experience-error' : null">
+                  <small *ngIf="experienceBalanceError" id="sheet-experience-error" class="experience-error">{{experienceBalanceError}}</small>
+                </div>
                 <div class="attribute metric"><small>Initiative</small><strong>{{canAct?attr('init'):'—'}}<span class="attr-delta" [class.negative]="attrDelta('init') < 0" *ngIf="upgrade && attrDelta('init')">{{deltaText(attrDelta('init'))}}</span></strong><small class="footnote">Броня −{{armourPenalty}} · Усталость: {{fatigueInitiativePenalty===null?'нет действий':fatigueInitiativePenalty}}</small></div>
                 <button class="attribute metric interactive" type="button" (click)="movementDialog=true">
                   <small>Movement <span class="material-icons ui-icon" aria-hidden="true">open_in_new</span></small><strong>{{currentMovement}} м<span class="attr-delta" [class.negative]="movementDelta < 0" *ngIf="upgrade && movementDelta">{{deltaText(movementDelta)}}</span></strong><small class="footnote">Бег · плавание · лазание · прыжки</small>
@@ -605,20 +618,22 @@
 </ng-template>
 
 <!-- Skill difficulty modal, closed by backdrop, button and Escape -->
-<div class="overlay" *ngIf="activeSkill" (mousedown)="stopOverlay($event)">
+<div class="overlay skill-check-overlay" *ngIf="activeSkill" (mousedown)="closeSkillCheck($event)">
   <div class="dialog skill-check-dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-label="Сложности навыка">
-    <header><div><small>{{movementCheck ? movementCheck + ' · Проверка навыка' : 'Проверка навыка'}}</small><h2>{{activeSkill.name}}</h2></div><button type="button" (click)="activeSkill=null" aria-label="Закрыть">×</button></header>
+    <header><div><small>{{movementCheck ? movementCheck + ' · Проверка навыка' : 'Проверка навыка'}}</small><h2>{{activeSkill.name}}</h2></div><button type="button" (click)="closeSkillCheck()" aria-label="Закрыть">×</button></header>
     <div class="dialog-body"><div class="dialog-result"><span>Текущее значение</span><strong>{{skillValue(activeSkill)}}%</strong></div>
-      <div class="augment-block">
+      <div #augmentBlock class="augment-block" (focusout)="closeAugmentOptions($event,augmentBlock)">
         <label class="field-label" for="companion-augment">Вспомогательный навык (не более одного)
-          <input id="companion-augment" class="search-field" type="search" [(ngModel)]="augmentQuery" placeholder="Поиск навыка…" autocomplete="off">
+          <input #augmentInput id="companion-augment" class="search-field" type="search" [(ngModel)]="augmentQuery"
+            (focus)="augmentOptionsOpen=true" (click)="augmentOptionsOpen=true"
+            [attr.aria-controls]="augmentOptionsOpen ? 'augment-options' : null" placeholder="Поиск навыка…" autocomplete="off">
         </label>
         <div class="augment-current" *ngIf="augmentSkill">
           <span>{{augmentSkill.name}} {{augmentValue}}% → бонус +{{augmentBonus}}</span>
           <button type="button" class="quiet compact" (click)="clearAugment()">Убрать</button>
         </div>
-        <div class="augment-options" *ngIf="!augmentSkill && augmentQuery.trim()">
-          <button type="button" *ngFor="let candidate of augmentCandidates" (click)="chooseAugment(candidate)">
+        <div id="augment-options" class="augment-options" *ngIf="augmentOptionsOpen">
+          <button type="button" *ngFor="let candidate of augmentCandidates; trackBy:trackSkill" (click)="chooseAugment(candidate,augmentInput)">
             <span>{{candidate.name}}</span><span>{{skillValue(candidate)}}%</span>
           </button>
           <p class="empty-state" *ngIf="!augmentCandidates.length">Ничего не найдено.</p>
@@ -757,17 +772,18 @@
 
 <!-- Movement panel uses the same calculation baseline as the original viewer -->
 <div class="overlay" *ngIf="movementDialog" (mousedown)="stopOverlay($event)">
-  <div class="dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true" aria-label="Движение и прыжки">
+  <div class="dialog" role="dialog" [cdkTrapFocus]="!activeSkill" [cdkTrapFocusAutoCapture]="true"
+    [attr.inert]="activeSkill ? '' : null" [attr.aria-modal]="activeSkill ? null : 'true'" aria-label="Движение и прыжки">
     <header><div><small>Расчёт от Athletics, Swim, роста, движения и штрафа брони</small><h2>Movement</h2></div><button type="button" (click)="movementDialog=false" aria-label="Закрыть">×</button></header>
     <div class="dialog-body">
       <ng-container *ngIf="move as speed">
         <div class="difficulty-grid movement-stats">
           <div><span>Ходьба</span><strong>{{speed.walking | number:'1.0-2'}} м</strong></div>
-          <button type="button" class="difficulty-card" (click)="openMovementCheck('Бег')">
+          <button type="button" class="difficulty-card" (click)="openMovementCheck('Бег',$event.currentTarget)">
             <span>Бег</span><strong>{{(runWithAthletics ? speed.running : speed.runningWithoutBonus) | number:'1.0-2'}} м</strong>
             <small>Проверить Атлетику</small>
           </button>
-          <button type="button" class="difficulty-card" (click)="openMovementCheck('Спринт')">
+          <button type="button" class="difficulty-card" (click)="openMovementCheck('Спринт',$event.currentTarget)">
             <span>Спринт</span><strong>{{(runWithAthletics ? speed.sprinting : speed.sprintingWithoutBonus) | number:'1.0-2'}} м</strong>
             <small>Проверить Атлетику</small>
           </button>
@@ -778,7 +794,7 @@
         </div>
         <label class="inline-checkbox"><input type="checkbox" [(ngModel)]="runWithAthletics"> Учитывать бонус Атлетики при беге и спринте</label>
         <section class="movement-section">
-          <div class="tab-intro"><h3>Лазание</h3><button class="quiet compact" type="button" (click)="openMovementCheck('Лазание')">Проверить Атлетику · Лазание</button></div>
+          <div class="tab-intro"><h3>Лазание</h3><button class="quiet compact" type="button" (click)="openMovementCheck('Лазание',$event.currentTarget)">Проверить Атлетику · Лазание</button></div>
           <div class="difficulty-grid movement-stats">
             <div><span>Лёгкая поверхность</span><strong>{{speed.climb.easy || 'Недоступно'}}{{speed.climb.easy ? ' м' : ''}}</strong></div>
             <div><span>Крутая поверхность</span><strong>{{speed.climb.steep || 'Недоступно'}}{{speed.climb.steep ? ' м' : ''}}</strong></div>
@@ -787,7 +803,7 @@
           <p class="calculation-explainer">Проверка нужна на скользких, осыпающихся и других опасных поверхностях или когда персонажа отвлекают во время подъёма.</p>
         </section>
         <section class="movement-section">
-          <div class="tab-intro"><h3>Прыжки</h3><button class="quiet compact" type="button" (click)="openMovementCheck('Прыжок')">Проверить Атлетику · Прыжок</button></div>
+          <div class="tab-intro"><h3>Прыжки</h3><button class="quiet compact" type="button" (click)="openMovementCheck('Прыжок',$event.currentTarget)">Проверить Атлетику · Прыжок</button></div>
           <label class="movement-mode">Тип прыжка
             <select [(ngModel)]="jumpRunUp"><option [ngValue]="true">С разбега от 5 м</option><option [ngValue]="false">С места</option></select>
           </label>
@@ -801,6 +817,15 @@
         </section>
         <p class="calculation-explainer">Рост {{speed.heightMetres || '—'}} м · Athletics {{speed.athletics}}% · Swim {{speed.swimSkill}}% · Штраф брони {{speed.armourPenalty}}</p>
       </ng-container>
+      <section class="check-history" aria-labelledby="athletics-history-title">
+        <h3 id="athletics-history-title">История бросков Атлетики</h3>
+        <p class="empty-state" *ngIf="!athleticsHistory.length">В этом сеансе пока нет бросков Атлетики.</p>
+        <ol *ngIf="athleticsHistory.length">
+          <li *ngFor="let entry of athleticsHistory" [class.critical]="entry.outcome==='critical'" [class.success]="entry.outcome==='success'" [class.fumble]="entry.outcome==='fumble'">
+            <span>{{entry.activity || 'Проверка'}}</span><span>{{entry.difficulty}}</span><strong>{{entry.label}}</strong><span>{{entry.roll}}</span>
+          </li>
+        </ol>
+      </section>
     </div>
   </div>
 </div>

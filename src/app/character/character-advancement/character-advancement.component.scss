@@ -1,0 +1,60 @@
+:host { max-width:100%; }
+
+dialog {
+  inline-size:min(660px, calc(100vw - 24px));
+  max-block-size:calc(100dvh - 24px);
+  padding:0;
+  color:var(--ui-ink);
+  background:var(--ui-surface);
+  border:1px solid var(--ui-border);
+  border-radius:12px;
+}
+
+dialog::backdrop { background:rgba(22, 14, 10, .65); }
+
+header {
+  position:sticky;
+  top:0;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 16px;
+  background:var(--ui-surface);
+  border-bottom:1px solid var(--ui-border);
+}
+
+h2, h3, p, dl, dd { margin:0; }
+h2 { font-family:var(--ui-display); font-size:24px; font-weight:400; }
+.advancement-body, section { display:grid; gap:12px; }
+.advancement-body { padding:16px; }
+label { display:grid; gap:4px; font-weight:500; min-width:0; }
+
+input:not([type='checkbox']), select, textarea {
+  width:100%;
+  min-height:36px;
+  padding:6px 8px;
+  color:var(--ui-ink);
+  background:var(--ui-canvas);
+  border:1px solid var(--ui-muted);
+  border-radius:6px;
+}
+label.check { display:flex; align-items:baseline; gap:8px; }
+label.check input { accent-color:var(--ui-accent); }
+small, .draft-note { color:var(--ui-muted); }
+
+.balance, .actions, nav { display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px; }
+.balance input { width:12ch; }
+.fields { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap:8px; }
+.fields small { grid-column:1 / -1; }
+nav button[aria-pressed='true'] { background:var(--ui-accent-soft); color:var(--ui-ink); }
+.error { color:var(--ui-danger); }
+.preview { border-top:1px solid var(--ui-border); padding-top:12px; }
+.preview ol { margin:0; padding-inline-start:20px; }
+.preview li { padding-block:2px; }
+.preview dl > div { display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 12px; padding:4px 0; }
+.preview dl > div + div { border-top:1px solid var(--ui-border); }
+.preview dd { font-variant-numeric:tabular-nums; }
+
+:host > button { min-height:40px; padding-inline:12px; white-space:normal; }

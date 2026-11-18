@@ -11,6 +11,7 @@ import { Subscription } from 'rxjs';
 import { Character } from '../../model/character';
 import { CharacterPassions } from '../../model/character-passions';
 import { SpiritRecord } from '../../model/character-magic';
+import { CharacterAdvancementComponent } from '../../character/character-advancement/character-advancement.component';
 import { EquipmentEditComponent } from '../../character/equipment-edit/equipment-edit.component';
 import { Skill, SkillCategory } from '../../model/skill';
 import { CombatStyle } from '../../model/combat-style';
@@ -49,14 +50,19 @@ import {
 import { DiceRollResult, resultFromValues, rollDice } from '../../services/dice';
 import { SkillCheckResult, resolveSkillCheck } from '../../services/skill-check';
 import { describeCharacterChange } from '../../services/sheet-history';
+import {
+  AdvancementEntry, advancementSkill, advancementSkills, applyAdvancement,
+  balanceAdjustment, changeCharacteristic, commitAdvancement, experienceBalance, validExperienceBalance,
+} from '../../services/character-advancement';
 
 interface SheetInfo { title:string; source?:string; sections:{label:string;paragraphs:string[]}[]; }
-interface CheckHistoryEntry { skill:string; difficulty:string; roll:number; label:string; outcome:string; }
+interface CheckHistoryEntry { skill:string; activity?:MovementCheck; difficulty:string; roll:number; label:string; outcome:string; }
 interface DiceHistoryEntry { expression:string; total:number; mode:'virtual'|'manual'; }
 interface ChangeHistoryEntry { snapshot:string; label:string; time:number; }
 
 type DraftEntryKind = 'catalogue' | 'passion' | 'language' | 'custom';
 type MovementCheck = 'Бег' | 'Спринт' | 'Лазание' | 'Прыжок';
+type ProfileField = 'frame' | 'height' | 'weight';
 const SHIELDS = new Set(WeaponCategories.Shield.map(name => name.toLowerCase()));
 const MOBILE_SKILLS_QUERY = '(max-width: 680px)';
 const WOUND_LABELS = {
@@ -152,7 +158,8 @@ const ATT_KEYS: {key:AttributeKey; name:string}[] = [
 @Component({
   selector:'app-companion-character-sheet',
   standalone:true,
-  imports:[CommonModule,FormsModule,RouterModule,A11yModule,MatButtonModule,MatFormFieldModule,MatInputModule,EquipmentEditComponent],
+  imports:[CommonModule,FormsModule,RouterModule,A11yModule,MatButtonModule,MatFormFieldModule,MatInputModule,
+    CharacterAdvancementComponent,EquipmentEditComponent],
   templateUrl:'./companion-character-sheet.component.html',
   styleUrls:['./companion-character-sheet.component.scss'],
 })
@@ -218,6 +225,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   activeInfo:SheetInfo|null=null;
   movementDialog=false;
   movementCheck: MovementCheck | null = null;
+  private movementCheckTrigger?:HTMLElement;
   runWithAthletics = true;
   jumpRunUp = true;
   jumpCritical = false;
@@ -225,6 +233,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   /** One augmenting skill at a time; it affects the current check only. */
   augmentSkill:Skill|null=null;
   augmentQuery='';
+  augmentOptionsOpen=false;
   /** A check is always resolved against one selected difficulty step. */
   selectedDifficulty:DifficultyStep=difficultyStep('Standard');
   checkRollMode:'virtual'|'manual'='virtual';
@@ -234,6 +243,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   checkError='';
   /** Deliberately session-only: these records are never written to the character. */
   readonly checkHistory:CheckHistoryEntry[]=[];
+  readonly athleticsHistory:CheckHistoryEntry[]=[];
   diceDialog=false;
   diceExpression='1d100';
   diceMode:'virtual'|'manual'='virtual';
@@ -259,7 +269,14 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   openedSpirit: SpiritRecord | null = null;
   upgrade=false;
   draftStats:Partial<Record<CharacteristicKey,number>>={};
+  draftProfile:Partial<Pick<CompanionCharacter,ProfileField>>={};
   readonly draftSkills=new Map<Skill,number>();
+  experienceEntries:AdvancementEntry[]=[];
+  experienceProjection?:CompanionCharacter;
+  experienceError='';
+  experienceBalanceError='';
+  private readonly projectedSkills=new Map<Skill,Skill>();
+  private experienceLearned:Skill[]=[];
   /** Professional skills learned inside the sheet before the draft is applied. */
   readonly draftAddedSkills: Skill[]=[];
   newSkillName='';
@@ -322,6 +339,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     if(this.historyPast.length>this.historyLimit)this.historyPast.splice(0,this.historyPast.length-this.historyLimit);
     this.historyFuture.length=0;
     this.historySnapshot=snapshot;
+    if(this.experienceEntries.length)this.rebuildExperiencePreview(this.experienceEntries);
   }
   private refreshSkillModifierOptions():void {
     const options=[...this.character.skills.skills,...(this.character.skills.specialized||[]),
@@ -382,7 +400,11 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   onEdit():void {this.saveHandle?.schedule();}
   @HostListener('window:beforeunload') @HostListener('window:pagehide')
   flush():void {this.saveHandle?.flush();}
-  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.diceDialog=false;this.historyOpen=false;this.cancelEffect();this.closePicker();this.fatigueTableOpen=false;this.closeSkills();}
+  @HostListener('document:keydown.escape') onEscape():void {
+    if(this.activeSkill){this.closeSkillCheck();return;}
+    this.activeInfo=null;this.movementDialog=false;this.diceDialog=false;this.historyOpen=false;
+    this.cancelEffect();this.closePicker();this.fatigueTableOpen=false;this.closeSkills();
+  }
   save():void {if(this.character)this.storage.saveCharacter(this.character,'view-character');}
   editInBuilder(section?:BuilderSection,focus?:string):void {
     this.flush();if(this.storage.error)return;
@@ -393,7 +415,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   exportJson():void {this.flush();downloadJson(this.character,(this.character.name||'character')+'.json');}
 
   get groups(){
-    const groups = skillGroups(this.character, this.upgrade ? this.draftAddedSkills : []);
+    const groups = skillGroups(this.character, this.upgrade ? [...this.draftAddedSkills,...this.experienceLearned] : []);
     const query=this.query.toLowerCase();
     return groups.map(g=>({...g,skills:g.skills.filter(s=>s.name.toLowerCase().includes(query))}));
   }
@@ -408,23 +430,42 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     this.skillsToggle?.nativeElement.focus();
   }
   get styles(){return getAllCombatStyles(this.character);}
-  get visiblePassions(){return [...this.character.passions, ...this.draftPassions].filter(p=>Boolean(p?.passion?.trim()));}
-  charValue(key:CharacteristicKey):number {return currentCharacteristic(this.character,key,this.upgrade?this.draftStats:{});}
+  private get advancementPreview():CompanionCharacter {return this.experienceProjection??this.character;}
+  get visiblePassions(){return [...this.advancementPreview.passions, ...this.draftPassions].filter(p=>Boolean(p?.passion?.trim()));}
+  passionDelta(passion:CharacterPassions):number {
+    if(!this.experienceProjection)return 0;
+    const initial=this.character.passions[this.experienceProjection.passions.indexOf(passion)]?.modifierNumber;
+    return initial!=null&&passion.modifierNumber!=null?passion.modifierNumber-initial:0;
+  }
+  charValue(key:CharacteristicKey):number {return currentCharacteristic(this.advancementPreview,key,this.upgrade?this.draftStats:{});}
   charBase(key:CharacteristicKey):number {return currentCharacteristic(this.character,key);}
+  statChange(key:CharacteristicKey):number {return this.charValue(key)-this.charBase(key);}
   skillValue(skill:Skill):number {
+    const preview=this.advancementPreview;
     if(this.upgrade&&this.isDraftAdded(skill)){
-      return getSkillBase(calculationCharacter(this.character,this.draftStats),skill)
+      return getSkillBase(calculationCharacter(preview,this.draftStats),skill)
         +skillModifierTotal(this.character,skill)+(this.draftSkills.get(skill)||0);
     }
-    return skillTotal(this.character,skill,this.upgrade?this.draftStats:{},this.upgrade?(this.draftSkills.get(skill)||0):0);
+    return skillTotal(preview,this.projectedSkills.get(skill)??skill,
+      this.upgrade?this.draftStats:{},this.upgrade?(this.draftSkills.get(skill)||0):0);
   }
   oldSkillValue(skill:Skill):number {return skillTotal(this.character,skill);}
+  isNewSkill(skill:Skill):boolean {return this.isDraftAdded(skill)||this.experienceLearned.includes(skill);}
+  directSkillDelta(skill:Skill):number {
+    const next=this.projectedSkills.get(skill);
+    const experience=next?(Number(next.extraBonus)||0)-(Number(skill.extraBonus)||0):0;
+    return experience+(this.draftSkills.get(skill)||0);
+  }
   indirectSkillDelta(skill:Skill):number {
-    if(this.isDraftAdded(skill))return 0;
-    return this.skillValue(skill)-this.oldSkillValue(skill)-(this.draftSkills.get(skill)||0);
+    if(this.isNewSkill(skill))return 0;
+    return this.skillValue(skill)-this.oldSkillValue(skill)-this.directSkillDelta(skill);
   }
   /** Use the very same Skill instance and difficulty modal as in the Skills column. */
-  magicSkill(name:string):Skill|null {return findTraditionSkill(this.character,name);}
+  magicSkill(name:string):Skill|null {
+    const skill=findTraditionSkill(this.advancementPreview,name);
+    if(!this.experienceProjection||!skill)return skill;
+    return [...this.projectedSkills].find(([,projected])=>projected===skill)?.[0]??null;
+  }
   relatedSkill(name:string):number|null {
     const skill=this.magicSkill(name);
     return skill?this.skillValue(skill):null;
@@ -437,28 +478,42 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     this.activeSkill=skill;
     this.augmentSkill=null;
     this.augmentQuery='';
+    this.augmentOptionsOpen=false;
     this.selectedDifficulty=difficultyStep('Standard');
     this.resetCheckRoll();
     if(skill)this.closeSkills();
+  }
+  closeSkillCheck(event?:MouseEvent):void {
+    if(event&&event.target!==event.currentTarget)return;
+    const trigger=this.movementCheckTrigger;
+    this.activeSkill=null;
+    this.movementCheck=null;
+    this.movementCheckTrigger=undefined;
+    if(trigger)requestAnimationFrame(()=>{
+      if(this.movementDialog&&!this.activeSkill)trigger.focus();
+    });
   }
   /** Search over the same catalog the skills column shows, including custom and
    * specialized entries. Semantic suitability is the player's decision. */
   get augmentCandidates():Skill[] {
     const query=this.augmentQuery.trim().toLowerCase();
-    if(!query||!this.activeSkill)return [];
+    if(!this.activeSkill)return [];
     const active=this.activeSkill;
     const all=[...this.character.skills.skills,...(this.character.skills.specialized||[]),
       ...(this.character.skills.combatstyles||[]),...(this.character.skills.extraProfessionalCultureSkills||[]),
       ...(this.character.skills.extraProfessionalCareerSkills||[]),
-      ...(this.character.skills.hobby?[this.character.skills.hobby]:[])];
-    const unique=all.filter((skill,index)=>Boolean(skill)&&all.indexOf(skill)===index);
-    return unique
-      .filter(skill=>skill!==active&&skill.name.toLowerCase().includes(query)&&this.skillValue(skill)>0)
-      .slice(0,12);
+      ...(this.character.skills.hobby?[this.character.skills.hobby]:[]),...this.draftAddedSkills];
+    return [...new Set(all)].filter(skill=>skill&&skill!==active&&skill.name.toLowerCase().includes(query)&&this.skillValue(skill)>0);
+  }
+  closeAugmentOptions(event:FocusEvent,container:HTMLElement):void {
+    if(!(event.relatedTarget instanceof Node)||!container.contains(event.relatedTarget))this.augmentOptionsOpen=false;
   }
   get augmentValue():number {return this.augmentSkill?this.skillValue(this.augmentSkill):0;}
   get augmentBonus():number {return augmentingBonus(this.augmentValue);}
-  chooseAugment(skill:Skill):void {if(skill===this.activeSkill)return;this.augmentSkill=skill;this.augmentQuery='';this.resetCheckRoll();}
+  chooseAugment(skill:Skill,input?:HTMLInputElement):void {
+    if(skill===this.activeSkill)return;
+    this.augmentSkill=skill;this.augmentQuery='';input?.focus();this.augmentOptionsOpen=false;this.resetCheckRoll();
+  }
   clearAugment():void {this.augmentSkill=null;this.augmentQuery='';this.resetCheckRoll();}
   thresholds(step:DifficultyStep):CheckThresholds {
     return checkThresholds(this.activeSkill?this.skillValue(this.activeSkill):0,step,this.augmentValue);
@@ -501,14 +556,20 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
       }
       this.checkResult=resolveSkillCheck(roll,target);
       if(!this.checkResult)return;
-      this.checkHistory.unshift({
+      const entry:CheckHistoryEntry={
         skill:this.activeSkill.name,
+        activity:this.movementCheck??undefined,
         difficulty:this.selectedDifficulty.name,
         roll:this.checkResult.roll ?? 0,
         label:this.checkResult.label,
         outcome:this.checkResult.outcome,
-      });
+      };
+      this.checkHistory.unshift(entry);
       this.checkHistory.splice(10);
+      if(entry.skill==='Athletics'){
+        this.athleticsHistory.unshift(entry);
+        this.athleticsHistory.splice(10);
+      }
       this.animateDiceResult('check');
     }catch(error){
       this.checkResult=null;
@@ -541,7 +602,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     this.diceAnimating=false;
     this.checkAnimating=false;
   }
-  clearCheckHistory():void {this.checkHistory.splice(0);}
+  clearCheckHistory():void {this.checkHistory.length=0;this.athleticsHistory.length=0;}
   setDiceMode(mode:'virtual'|'manual'):void {
     if(this.diceMode===mode)return;
     this.diceMode=mode;
@@ -595,7 +656,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   }
   clearDiceHistory():void {this.diceHistory.splice(0);}
   attr(key:'ap'|'healing'|'init'|'luck'|'expMod'):number {
-    return attributeTotal(this.character,key,this.upgrade?this.draftStats:{});
+    return attributeTotal(this.advancementPreview,key,this.upgrade?this.draftStats:{});
   }
   attrOld(key:'ap'|'healing'|'init'|'luck'|'expMod'):number {
     return attributeTotal(this.character,key);
@@ -621,13 +682,13 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   deltaText(delta:number):string {
     return (delta>0?'↑ +':'↓ −')+Math.abs(delta);
   }
-  get damage():string {return damageModifier(this.character,this.upgrade?this.draftStats:{});}
-  openMovementCheck(activity: MovementCheck): void {
+  get damage():string {return damageModifier(this.advancementPreview,this.upgrade?this.draftStats:{});}
+  openMovementCheck(activity:MovementCheck,trigger?:EventTarget|null):void {
     const athletics = this.character.skills.skills.find(skill => skill.name === 'Athletics');
     if (!athletics) return;
-    this.movementDialog = false;
     this.openSkill(athletics);
     this.movementCheck = activity;
+    this.movementCheckTrigger=trigger instanceof HTMLElement?trigger:undefined;
   }
   get movementOutcome(): string {
     if (!this.movementCheck || !this.checkResult) return '';
@@ -654,7 +715,8 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   }
   get move(){
     const bonus=(name:string)=>this.upgrade?(this.draftSkills.get(this.character.skills.skills.find(s=>s.name===name)!)||0):0;
-    return movementSummary(this.character,this.upgrade?this.draftStats:{},{athletics:bonus('Athletics'),swim:bonus('Swim')});
+    const preview='height' in this.draftProfile?{...this.advancementPreview,...this.draftProfile}:this.advancementPreview;
+    return movementSummary(preview,this.upgrade?this.draftStats:{},{athletics:bonus('Athletics'),swim:bonus('Swim')});
   }
   get shapingPoints():number {
     return Math.max(0, shapingPointMaximum(this.relatedSkill('Shaping')||0) + magicModifier(this.character,'sorcery.shapingPoints'));
@@ -704,7 +766,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   get theismIntensityValue():number {
     return Math.max(0, theismIntensity(this.devotionValue) + magicModifier(this.character,'theism.intensity'));
   }
-  get mpMax():number {return magicPointMaximum(this.character,this.upgrade?this.draftStats:{});}
+  get mpMax():number {return magicPointMaximum(this.advancementPreview,this.upgrade?this.draftStats:{});}
   get currentMovement():number {return this.move.walking;}
   get fatigueInitiativePenalty():number|null {return this.currentFatigueRule.initiative;}
   get fatigueActionPointsPenalty():number|null {return this.currentFatigueRule.actionPoints;}
@@ -861,9 +923,9 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   setFatigue(value:string):void {this.character.fatigueLevel=value;}
   get currentFatigueRule(){return fatigueRule(this.character);}
   get canAct():boolean{return canAct(this.character);}
-  get currentHp():number {return displayedLocationHp(this.character,this.selectedLocation,this.upgrade?this.draftStats:{});}
-  maxHp(key:HitLocation):number {return maxLocationHp(this.character,key,this.upgrade?this.draftStats:{});}
-  hp(key:HitLocation):number {return displayedLocationHp(this.character,key,this.upgrade?this.draftStats:{});}
+  get currentHp():number {return this.hp(this.selectedLocation);}
+  maxHp(key:HitLocation):number {return maxLocationHp(this.advancementPreview,key,this.upgrade?this.draftStats:{});}
+  hp(key:HitLocation):number {return displayedLocationHp(this.advancementPreview,key,this.upgrade?this.draftStats:{});}
   hpColour(key:HitLocation):string {
     const max=this.maxHp(key),n=this.hp(key);
     const [major, serious, healthy] = this.theme.current === 'tennla'
@@ -1060,7 +1122,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
      and cult records that already exist in the save; no new fields are written. */
   get folkMagic():{value:number;known:number;starting:number} {
     const value=this.relatedSkill('Folk Magic')||0;
-    return {value, known:(this.character.magic?.folk||[]).length, starting:folkMagicStartingSpells(value)};
+    return {value, known:(this.advancementPreview.magic?.folk||[]).length, starting:folkMagicStartingSpells(value)};
   }
   get animism():{trance:number;binding:number;radius:number;maxSpiritPow:number;limit:number|null;damage:string|null;rank:string} {
     const binding=this.relatedSkill('Binding')||0;
@@ -1084,7 +1146,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     const invocation=this.relatedSkill('Invocation')||0;
     return {
       invocation, shaping:this.relatedSkill('Shaping')||0, intensity:sorceryIntensity(invocation),
-      memoryLimit:sorceryMemoryLimit(this.intValue), known:(this.character.magic?.sorcery||[]).length,
+      memoryLimit:sorceryMemoryLimit(this.intValue), known:(this.advancementPreview.magic?.sorcery||[]).length,
     };
   }
   get theismCultName():string {return this.character.theistCult?.name||'';}
@@ -1129,7 +1191,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   }
 
   get traditions():Tradition[] {
-    const m=this.character.magic;
+    const m=this.advancementPreview.magic;
     const ret:Tradition[]=[];
     const add=(title:string,subtitle:string,spells:any[],skills:string[],showEmpty=false)=>{
       if(!spells?.length&&!showEmpty)return;
@@ -1207,10 +1269,56 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   get sessionNotes():string {return this.character.sessionNotes||'';}
   set sessionNotes(text:string){this.character.sessionNotes=text;}
 
+  get availableExperienceRolls():number {return experienceBalance(this.advancementPreview);}
+  setExperienceBalance(value:number):void {
+    this.experienceBalanceError='';
+    if(!validExperienceBalance(value)){
+      this.experienceBalanceError='Укажите целое число бросков от 0.';
+      return;
+    }
+    const delta=value-this.availableExperienceRolls;
+    if(!delta)return;
+    if(this.upgrade){
+      this.rebuildExperiencePreview([...this.experienceEntries,balanceAdjustment(delta)]);
+    }else{
+      (this.character.advancement??={}).experienceRolls=value;
+    }
+  }
+  setExperienceDraft(draft:{entries:AdvancementEntry[];projected?:CompanionCharacter}):void {
+    this.experienceEntries=draft.entries;
+    this.experienceProjection=draft.projected;
+    this.experienceError='';
+    this.projectedSkills.clear();
+    this.experienceLearned=[];
+    if(!draft.projected)return;
+    for(const {address,skill,learned} of advancementSkills(this.character)){
+      const projected=advancementSkill(draft.projected,address);
+      if(!projected)continue;
+      this.projectedSkills.set(skill,projected);
+      if(!learned&&projected.force)this.experienceLearned.push(skill);
+    }
+  }
+  private rebuildExperiencePreview(entries:AdvancementEntry[]):void {
+    try{
+      this.setExperienceDraft({entries,projected:applyAdvancement(this.character,entries.map(entry=>entry.action))});
+    }catch(error){
+      this.setExperienceDraft({entries:this.experienceEntries});
+      this.experienceError=error instanceof Error?error.message:'Проверьте черновик бросков опыта.';
+    }
+  }
   beginUpgrade(): void { this.discardUpgrade(); this.upgrade = true; }
+  profileValue(key:ProfileField):string|number|undefined {
+    return key in this.draftProfile?this.draftProfile[key]:this.character[key];
+  }
+  setProfileField<K extends ProfileField>(key:K,value:CompanionCharacter[K]|null):void {
+    if(this.upgrade)this.draftProfile[key]=value??undefined;
+  }
   discardUpgrade(): void {
     this.upgrade = false;
+    this.setExperienceDraft({entries:[]});
+    this.experienceBalanceError='';
     this.draftStats = {};
+    this.draftProfile = {};
     this.draftSkills.clear();
     this.draftAddedSkills.length = 0;
     this.draftNewSkills.length = 0;
@@ -1225,7 +1333,8 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   }
   get hasUpgrade(): boolean {
     return Object.values(this.draftStats).some(Boolean) || [...this.draftSkills.values()].some(Boolean)
-      || this.draftAddedSkills.length > 0 || this.draftPassions.length > 0;
+      || (['frame','height','weight'] as const).some(key=>this.profileValue(key)!==this.character[key])
+      || this.draftAddedSkills.length > 0 || this.draftPassions.length > 0 || this.experienceEntries.length > 0;
   }
   get canAddPassion(): boolean {
     return !!this.passionName.trim() && this.passionValue !== null
@@ -1263,7 +1372,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   }
   /** Professional skills from the catalogue that the character has not learned yet. */
   get addableSkills():Skill[] {
-    const visible=new Set(visibleProfessionalSkills(this.character));
+    const visible=new Set([...visibleProfessionalSkills(this.character),...this.experienceLearned]);
     const seen=new Set<string>();
     return (this.character.skills.skills||[])
       .filter(skill=>Boolean(skill?.professional)&&!visible.has(skill)&&!this.draftAddedSkills.includes(skill))
@@ -1285,25 +1394,26 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   }
   alterStat(key:CharacteristicKey,delta:number):void {
     const next=(this.draftStats[key]||0)+delta;
-    if(this.charBase(key)+next<1)return;
+    if(currentCharacteristic(this.advancementPreview,key)+next<1)return;
     this.draftStats[key]=next;
   }
   alterSkill(skill:Skill,delta:number):void {this.draftSkills.set(skill,(this.draftSkills.get(skill)||0)+delta);}
   applyUpgrade():void {
+    if(this.experienceEntries.length){
+      this.rebuildExperiencePreview(this.experienceEntries);
+      if(!this.experienceProjection)return;
+      commitAdvancement(this.character,this.experienceProjection);
+    }
     // Permanent advancements are saved into native Mythras Tools properties.
     for(const key of CHARACTERISTICS){
-      const delta=this.draftStats[key]||0;
-      if(!delta)continue;
-      this.character.skills[key]=(Number(this.character.skills[key])||0)+delta;
-      const manual=this.character.currentValues?.[key];
-      if(delta && manual!=='' && manual!==undefined && manual!==null && Number.isFinite(Number(manual))){
-        (this.character.currentValues ||= {})[key]=Number(manual)+delta;
-      }
+      changeCharacteristic(this.character,key,this.draftStats[key]||0);
     }
     for(const [skill,delta] of this.draftSkills)skill.extraBonus=(Number(skill.extraBonus)||0)+delta;
+    Object.assign(this.character,this.draftProfile);
     for(const skill of this.draftAddedSkills)skill.force=true;
     this.character.skills.skills.push(...this.draftNewSkills);
     this.character.passions.push(...this.draftPassions);
+    this.refreshSkillModifierOptions();
     this.discardUpgrade();
   }
   difficultyTarget(multiplier:number):number {return this.activeSkill?Math.ceil(this.skillValue(this.activeSkill)*multiplier):0;}

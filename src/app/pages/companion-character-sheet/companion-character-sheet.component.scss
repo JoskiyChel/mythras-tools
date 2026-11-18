@@ -240,6 +240,13 @@ input[type='checkbox'] { accent-color:var(--ui-accent); }
 .masthead-tools button.skills-toggle { display:none; }
 
 .armour-penalty-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:8px; }
+.character-header { flex-wrap:wrap; gap:8px; }
+.character-header app-character-advancement { position:relative; z-index:1; }
+.experience-counter label { color:var(--ui-muted); font-size:12px; }
+.experience-counter input { width:100%; min-height:32px; color:var(--ui-ink); background:var(--ui-canvas); border:1px solid var(--ui-border); }
+.experience-error { color:var(--ui-danger); margin:4px 0; }
+.identity-mini input[readonly] { background:transparent; border-color:transparent; cursor:default; }
+.skill-check-overlay { z-index:101; }
 
 @media(max-width:680px) {
   .skills-toggle, .skills-close { display:inline-flex; align-items:center; justify-content:center; min-height:32px; }
