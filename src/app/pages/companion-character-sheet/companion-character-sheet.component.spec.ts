@@ -137,31 +137,44 @@ describe('Companion permanent advancement', () => {
     expect(component.diceHistory.length).toBe(0);
   });
 
+  it('discards a new trauma and its modifiers when the editor is cancelled', () => {
+    const before = JSON.stringify(component.character);
+    const max = component.maxHp('leftArm');
+    component.selectLocation('leftArm');
+    component.toggleInjury('Увечье');
+    expect(component.addingEffect).toBeTrue();
+    expect(component.newModifiers).toEqual([{kind:'locationHp',key:'leftArm',amount:-1}]);
+    expect(component.injuryText('leftArm')).toBe('');
+    expect(component.maxHp('leftArm')).toBe(max);
+    component.ngDoCheck();
+    component.cancelEffect();
+    component.ngDoCheck();
+    expect(JSON.stringify(component.character)).toBe(before);
+    expect(component.canUndo).toBeFalse();
+  });
+
   it('combines physical traumas, retains their modifiers and removes each independently', () => {
     component.character.companion = {};
     component.selectLocation('leftArm');
     const baseMax = component.maxHp('leftArm');
     component.toggleInjury('Увечье');
-    expect(component.injuryText('leftArm')).toBe('Увечье');
-    expect(component.maxHp('leftArm')).toBe(baseMax - 1);
-    const maim = component.effects.find(effect => effect.injury?.type === 'Увечье')!;
-    expect(maim.name).toBe('Увечье левой руки');
-    expect(maim.description).toContain('навсегда теряет 1 пункт');
-    expect(maim.modifiers).toEqual([{kind:'locationHp',key:'leftArm',amount:-1}]);
-    expect(component.modifierLabel(maim.modifiers[0])).toBe('Максимальное здоровье: Левая рука -1');
+    expect(component.effectName).toBe('Увечье левой руки');
+    expect(component.effectDescription).toContain('навсегда теряет 1 пункт');
+    expect(component.modifierLabel(component.newModifiers[0])).toBe('Максимальное здоровье: Левая рука -1');
     expect(component.addingEffect).toBeTrue();
     component.newModifiers[0].amount = -2;
     component.applyEffect();
+    expect(component.injuryText('leftArm')).toBe('Увечье');
     expect(component.maxHp('leftArm')).toBe(baseMax - 2);
 
     component.toggleInjury('Отсечена');
-    component.cancelEffect();
+    component.applyEffect();
     component.toggleInjury('Пронзена');
-    component.cancelEffect();
+    component.applyEffect();
     component.toggleInjury('Кровотечение');
-    component.cancelEffect();
+    component.applyEffect();
     component.toggleInjury('Шрам');
-    component.cancelEffect();
+    component.applyEffect();
     expect(component.injuryText('leftArm')).toBe('Увечье, Отсечена, Пронзена, Кровотечение, Шрам');
     expect(component.maxHp('leftArm')).toBe(baseMax - 2);
     expect(component.selectedInjuryEffects.length).toBe(5);
@@ -175,6 +188,24 @@ describe('Companion permanent advancement', () => {
     expect(component.woundImpale(arm)).toEqual(arm.impale);
     component.toggleInjury('Увечье');
     expect(component.maxHp('leftArm')).toBe(baseMax);
+  });
+
+  it('returns a legacy manual armour penalty to live calculation when reset', () => {
+    component.character.equipment.head.enc = 6;
+    component.character.equipment.armorPenalty = 4;
+    component.takeOffArmour('head');
+    expect(component.armourPenalty).toBe(4);
+    expect(component.computedArmourPenalty).toBe(0);
+    component.resetArmourPenalty();
+    expect(component.manualArmourPenalty).toBeNull();
+    expect(component.armourPenalty).toBe(0);
+    component.character.equipment.head.enc = 6;
+    expect(component.armourPenalty).toBe(2);
+    component.editArmourPenalty();
+    component.armourPenaltyDraft = 0;
+    component.saveArmourPenalty();
+    expect(component.manualArmourPenalty).toBe(0);
+    expect(component.armourPenalty).toBe(0);
   });
 
   it('previews derived attribute changes during Становление', () => {

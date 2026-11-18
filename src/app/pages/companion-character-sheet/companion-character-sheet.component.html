@@ -10,7 +10,7 @@
         <button type="button" (click)="redoChange()" [disabled]="!canRedo" title="Повторить отменённое изменение" aria-label="Повторить отменённое изменение">↷</button>
         <button type="button" (click)="historyOpen=true" title="Журнал изменений" aria-label="Открыть журнал изменений">⏱</button>
       </span>
-      <button class="skills-toggle" type="button" (click)="skillsOpen=!skillsOpen" [attr.aria-expanded]="skillsOpen" aria-controls="companion-skills">Навыки</button>
+      <button #skillsToggle class="skills-toggle" type="button" (click)="openSkills()" [attr.aria-expanded]="skillsOpen" aria-controls="companion-skills">Навыки</button>
       <a routerLink="/menu">Библиотека</a>
       <button type="button" (click)="diceDialog=true">Кубики</button>
       <a routerLink="/view">PDF / Печать</a>
@@ -21,11 +21,14 @@
   <div class="save-status" role="status">{{storage.error || 'Изменения сохраняются автоматически в этом браузере.'}}</div>
   <div class="sheet-layout">
     <!-- Skills column: no sticky duplicate of Resistances -->
-    <aside class="card skills-panel" id="companion-skills" [class.open]="skillsOpen">
+    <aside #skillsTrap="cdkTrapFocus" class="card skills-panel" id="companion-skills" [class.open]="skillsOpen"
+      [cdkTrapFocus]="mobileSkillsLayout && skillsOpen" [attr.inert]="mobileSkillsLayout && !skillsOpen ? '' : null"
+      [attr.role]="mobileSkillsLayout ? 'dialog' : null"
+      [attr.aria-modal]="mobileSkillsLayout && skillsOpen ? 'true' : null" aria-labelledby="companion-skills-title">
       <div class="card-title">
-        <h2>Навыки</h2>
+        <h2 id="companion-skills-title">Навыки</h2>
         <div class="inline-actions">
-          <button class="skills-close" type="button" (click)="skillsOpen=false" aria-label="Закрыть панель навыков">×</button>
+          <button cdkFocusInitial class="skills-close" type="button" (click)="closeSkills()" aria-label="Закрыть панель навыков">×</button>
           <ng-container *ngIf="!upgrade"><button class="primary compact" type="button" (click)="beginUpgrade()">＋ Становление</button></ng-container>
           <ng-container *ngIf="upgrade">
             <button class="quiet compact" type="button" (click)="discardUpgrade()">Отмена</button>
@@ -110,7 +113,7 @@
         </section>
       </div>
     </aside>
-    <div class="skills-backdrop" *ngIf="skillsOpen" (click)="skillsOpen=false" aria-hidden="true"></div>
+    <div class="skills-backdrop" *ngIf="skillsOpen" (click)="closeSkills()" aria-hidden="true"></div>
 
     <main class="companion-main">
       <section class="card character-card">
@@ -507,9 +510,28 @@
             <div class="armour-summary">
               <div><small>Нагрузка снаряжения</small><strong>{{armourLoad.gear | number:'1.0-2'}}</strong></div>
               <div><small>Нагрузка надетой брони</small><strong>{{armourLoad.worn | number:'1.0-2'}}</strong></div>
-              <div><small>Общая нагрузка</small><strong>{{armourLoad.total | number:'1.0-2'}}</strong></div>
-              <div><small>Штраф за броню</small><strong>{{armourPenalty}}</strong></div>
+              <div><small>Общая нагрузка</small><strong>{{armourLoad.total | number:'1.0-2'}}</strong>
+                <small>ENC надетой брони учитывается наполовину.</small>
+              </div>
+              <div><small>Штраф за броню</small><strong>{{manualArmourPenalty ?? computedArmourPenalty}}</strong>
+                <small>{{manualArmourPenalty === null ? 'Авторасчёт' : 'Задан вручную · авторасчёт ' + computedArmourPenalty}}</small>
+              </div>
             </div>
+            <div class="armour-penalty-controls">
+              <button #armourPenaltyButton mat-stroked-button type="button" (click)="editArmourPenalty()"
+                [attr.aria-expanded]="editingArmourPenalty">{{manualArmourPenalty === null ? 'Задать вручную' : 'Изменить ручной штраф'}}</button>
+              <button *ngIf="manualArmourPenalty !== null" mat-stroked-button type="button"
+                (click)="resetArmourPenalty(); armourPenaltyButton.focus()">Вернуть авторасчёт</button>
+            </div>
+            <form *ngIf="editingArmourPenalty" class="armour-penalty-controls" (ngSubmit)="saveArmourPenalty(); armourPenaltyButton.focus()">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Штраф за броню вручную</mat-label>
+                <input #armourPenaltyInput matInput type="number" min="0" step="any"
+                  name="armourPenalty" [(ngModel)]="armourPenaltyDraft" required>
+              </mat-form-field>
+              <button mat-flat-button color="primary" type="submit" [disabled]="!armourPenaltyDraftValid">Сохранить</button>
+              <button mat-button type="button" (click)="cancelArmourPenaltyEdit(); armourPenaltyButton.focus()">Отмена</button>
+            </form>
             <div class="armour-list">
               <div class="armour-row" *ngFor="let loc of equipmentSlots">
                 <div><strong>{{loc.label}}</strong><small>{{hasArmour(character.equipment[loc.key]) ? armourLabel(character.equipment[loc.key]) : 'Без брони'}}</small></div>

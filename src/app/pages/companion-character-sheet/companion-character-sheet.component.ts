@@ -1,8 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { A11yModule } from '@angular/cdk/a11y';
-import { Component, DoCheck, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import { A11yModule, CdkTrapFocus } from '@angular/cdk/a11y';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { Component, DoCheck, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { Router, RouterModule } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { Character } from '../../model/character';
 import { CharacterPassions } from '../../model/character-passions';
 import { SpiritRecord } from '../../model/character-magic';
@@ -36,7 +41,7 @@ import {
   skillGroups, fatigueRule, canAct, changeLocationHp, findTraditionSkill, shapingPointMaximum,
   visibleProfessionalSkills, severity, difficultyStep, jumpDistance,
   DIFFICULTY_STEPS, DifficultyStep, CheckThresholds, checkThresholds, augmentingBonus,
-  WOUND_TYPES, locationInjuries, setLocationInjuries, magicModifier,
+  WOUND_TYPES, locationInjuries, setLocationInjuries, magicModifier, savedArmourPenalty, automaticArmourPenalty,
   theismPoolLimit, theismIntensity, animismMaxSpiritPow, animismSpiritLimit,
   animismSpiritDamage, mysticismTotalIntensity, mysticismTalentIntensity, mysticismTrainedLimit,
   sorceryIntensity, sorceryMemoryLimit, folkMagicStartingSpells,
@@ -53,6 +58,7 @@ interface ChangeHistoryEntry { snapshot:string; label:string; time:number; }
 type DraftEntryKind = 'catalogue' | 'passion' | 'language' | 'custom';
 type MovementCheck = 'Бег' | 'Спринт' | 'Лазание' | 'Прыжок';
 const SHIELDS = new Set(WeaponCategories.Shield.map(name => name.toLowerCase()));
+const MOBILE_SKILLS_QUERY = '(max-width: 680px)';
 const WOUND_LABELS = {
   healthy: 'Без ранения', minor: 'Лёгкое ранение',
   serious: 'Серьёзное ранение', major: 'Тяжёлое ранение',
@@ -146,7 +152,7 @@ const ATT_KEYS: {key:AttributeKey; name:string}[] = [
 @Component({
   selector:'app-companion-character-sheet',
   standalone:true,
-  imports:[CommonModule,FormsModule,RouterModule,A11yModule,EquipmentEditComponent],
+  imports:[CommonModule,FormsModule,RouterModule,A11yModule,MatButtonModule,MatFormFieldModule,MatInputModule,EquipmentEditComponent],
   templateUrl:'./companion-character-sheet.component.html',
   styleUrls:['./companion-character-sheet.component.scss'],
 })
@@ -156,6 +162,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   private readonly router=inject(Router);
   private readonly specialEffects=inject(SpecialEffectsService);
   private readonly weapons=inject(WeaponService);
+  private readonly breakpoints=inject(BreakpointObserver);
   readonly weaponCatalog:Weapon[]=this.weapons.getWeapons();
   readonly armourPresets=ARMOUR_PRESETS;
   readonly toolsCatalog=(ToolsShop as {item:string;enc:string;cost:string}[]);
@@ -241,6 +248,10 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   private animationTimer?:ReturnType<typeof setTimeout>;
   /** Mobile: the skills panel is a drawer, closed by default. */
   skillsOpen=false;
+  mobileSkillsLayout=this.breakpoints.isMatched(MOBILE_SKILLS_QUERY);
+  private skillsLayoutSubscription?:Subscription;
+  @ViewChild('skillsToggle') private skillsToggle?:ElementRef<HTMLButtonElement>;
+  @ViewChild('skillsTrap') private skillsTrap?:CdkTrapFocus;
   /** HP to deal or restore with a single click. The amount is shared by all locations. */
   hpAmount=1;
   openedWeapon=-1;
@@ -273,8 +284,17 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   effectName=''; effectDuration=''; effectDescription='';
   newModifiers:SheetModifier[]=[];
   editingEquipment=false;
+  editingArmourPenalty=false;
+  armourPenaltyDraft:number|null=null;
+  @ViewChild('armourPenaltyInput') set armourPenaltyInput(input:ElementRef<HTMLInputElement>|undefined) {
+    if(input)queueMicrotask(()=>input.nativeElement.focus());
+  }
 
   ngOnInit():void {
+    this.skillsLayoutSubscription=this.breakpoints.observe(MOBILE_SKILLS_QUERY).subscribe(({matches})=>{
+      this.mobileSkillsLayout=matches;
+      if(!matches)this.skillsOpen=false;
+    });
     this.character=this.storage.readCharacter('view-character') as CompanionCharacter;
     const hpInitialised=initializePristineHitPoints(this.character);
     this.refreshSkillModifierOptions();
@@ -282,7 +302,10 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     this.saveHandle=this.storage.createDebouncedSave(()=>this.save(),350);
     if(hpInitialised)this.saveHandle.schedule();
   }
-  ngOnDestroy():void {this.clearAnimationTimer();this.saveHandle?.flush();this.saveHandle?.destroy();}
+  ngOnDestroy():void {
+    this.skillsLayoutSubscription?.unsubscribe();
+    this.clearAnimationTimer();this.saveHandle?.flush();this.saveHandle?.destroy();
+  }
   ngDoCheck():void {
     if(!this.character||this.restoringHistory)return;
     const snapshot=JSON.stringify(this.character);
@@ -359,7 +382,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   onEdit():void {this.saveHandle?.schedule();}
   @HostListener('window:beforeunload') @HostListener('window:pagehide')
   flush():void {this.saveHandle?.flush();}
-  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.diceDialog=false;this.historyOpen=false;this.cancelEffect();this.closePicker();this.fatigueTableOpen=false;}
+  @HostListener('document:keydown.escape') onEscape():void {this.activeSkill=null;this.activeInfo=null;this.movementDialog=false;this.diceDialog=false;this.historyOpen=false;this.cancelEffect();this.closePicker();this.fatigueTableOpen=false;this.closeSkills();}
   save():void {if(this.character)this.storage.saveCharacter(this.character,'view-character');}
   editInBuilder(section?:BuilderSection,focus?:string):void {
     this.flush();if(this.storage.error)return;
@@ -373,6 +396,16 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     const groups = skillGroups(this.character, this.upgrade ? this.draftAddedSkills : []);
     const query=this.query.toLowerCase();
     return groups.map(g=>({...g,skills:g.skills.filter(s=>s.name.toLowerCase().includes(query))}));
+  }
+  openSkills():void {
+    if(!this.mobileSkillsLayout || this.skillsOpen)return;
+    this.skillsOpen=true;
+    void this.skillsTrap?.focusTrap.focusInitialElementWhenReady();
+  }
+  closeSkills():void {
+    if(!this.skillsOpen)return;
+    this.skillsOpen=false;
+    this.skillsToggle?.nativeElement.focus();
   }
   get styles(){return getAllCombatStyles(this.character);}
   get visiblePassions(){return [...this.character.passions, ...this.draftPassions].filter(p=>Boolean(p?.passion?.trim()));}
@@ -406,7 +439,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     this.augmentQuery='';
     this.selectedDifficulty=difficultyStep('Standard');
     this.resetCheckRoll();
-    if(skill)this.skillsOpen=false;
+    if(skill)this.closeSkills();
   }
   /** Search over the same catalog the skills column shows, including custom and
    * specialized entries. Semantic suitability is the player's decision. */
@@ -676,6 +709,30 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
   get fatigueInitiativePenalty():number|null {return this.currentFatigueRule.initiative;}
   get fatigueActionPointsPenalty():number|null {return this.currentFatigueRule.actionPoints;}
   get armourPenalty():number {return this.move.armourPenalty;}
+  get manualArmourPenalty():number|null {return savedArmourPenalty(this.character);}
+  get computedArmourPenalty():number {return automaticArmourPenalty(this.character);}
+  editArmourPenalty():void {
+    if(this.editingArmourPenalty)return;
+    this.armourPenaltyDraft=this.manualArmourPenalty??this.computedArmourPenalty;
+    this.editingArmourPenalty=true;
+  }
+  get armourPenaltyDraftValid():boolean {
+    const draft=this.armourPenaltyDraft;
+    return draft!==null && Number.isFinite(draft) && draft>=0;
+  }
+  saveArmourPenalty():void {
+    if(this.armourPenaltyDraft===null || !this.armourPenaltyDraftValid)return;
+    this.character.equipment.armorPenalty=this.armourPenaltyDraft;
+    this.cancelArmourPenaltyEdit();
+  }
+  cancelArmourPenaltyEdit():void {
+    this.editingArmourPenalty=false;
+    this.armourPenaltyDraft=null;
+  }
+  resetArmourPenalty():void {
+    delete this.character.equipment.armorPenalty;
+    this.cancelArmourPenaltyEdit();
+  }
   currentResource(key:'ap'|'luck'|'magicPoints',max:number):number {
     const value=this.character.currentValues?.[key];
     return value!==''&&value!=null&&Number.isFinite(Number(value))?Math.max(0,Math.min(max,Number(value))):max;
@@ -705,7 +762,7 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     }
     companionState(this.character).effects=this.effects.filter(x=>x.id!==id);
   }
-  openEffectDialog(effect?:SheetEffect):void {
+  openEffectDialog(effect?:Omit<SheetEffect,'id'> & {id?:string}):void {
     this.addingEffect=true;
     this.editingEffectId=effect?.id??null;
     this.editingInjury=effect?.injury?{...effect.injury}:undefined;
@@ -750,6 +807,11 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
     companionState(this.character).effects=this.editingEffectId
       ? this.effects.map(entry=>entry.id===this.editingEffectId?effect:entry)
       : [...this.effects,effect];
+    if(effect.injury){
+      const {location,type}=effect.injury;
+      const injuries=locationInjuries(this.character,location);
+      if(!injuries.includes(type))setLocationInjuries(this.character,location,[...injuries,type]);
+    }
     this.cancelEffect();
   }
   cancelEffect():void {
@@ -777,19 +839,20 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
       : '';
   }
   private openInjuryEffect(location:HitLocation,type:string):void {
-    let effect=this.effects.find(entry=>entry.injury?.location===location&&entry.injury?.type===type);
-    if(effect&&type==='Увечье'&&!(effect.modifiers||[]).some(mod=>mod.kind==='locationHp'&&mod.key===location)){
-      effect.modifiers=[...(effect.modifiers||[]),{kind:'locationHp',key:location,amount:-1}];
+    const existing=this.effects.find(entry=>entry.injury?.location===location&&entry.injury?.type===type);
+    const modifiers=[...(existing?.modifiers??[])];
+    if(type==='Увечье' && !modifiers.some(mod=>mod.kind==='locationHp'&&mod.key===location)){
+      modifiers.push({kind:'locationHp',key:location,amount:-1});
     }
-    if(!effect){
-      effect={id:this.newEffectId(),name:this.injuryEffectName(location,type),
+    this.openEffectDialog({
+      ...(existing??{
+        name:this.injuryEffectName(location,type),
         duration:type==='Кровотечение'?'До остановки кровотечения':'Постоянно',
         description:this.injuryEffectDescription(type),
-        modifiers:type==='Увечье'?[{kind:'locationHp',key:location,amount:-1}]:[],
-        injury:{location,type}};
-      companionState(this.character).effects=[...this.effects,effect];
-    }
-    this.openEffectDialog(effect);
+        injury:{location,type},
+      }),
+      modifiers,
+    });
   }
   private removeInjuryEffect(location:HitLocation,type:string):void {
     companionState(this.character).effects=this.effects
@@ -849,7 +912,6 @@ export class CompanionCharacterSheetComponent implements OnInit, OnDestroy, DoCh
       this.removeInjuryEffect(location,type);
       return;
     }
-    setLocationInjuries(this.character, location, [...current, type]);
     this.openInjuryEffect(location,type);
   }
   get selectedLabel():string {return hitLocationRule(this.selectedLocation).labelRu;}

@@ -22,7 +22,7 @@ export class CharacterEquipment {
     equipmentEnc : number;
     armourEnc : number;
     totalEnc : number;
-    armorPenalty : number;
+    armorPenalty?: number;
     equipmentAndArmor : string;
 
     constructor() {

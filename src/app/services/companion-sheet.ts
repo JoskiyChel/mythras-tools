@@ -77,7 +77,7 @@ export function companionState(character: CompanionCharacter): CompanionState {
   return character.companion ?? (character.companion = {});
 }
 
-/** Physical traumas are mutually exclusive; bleeding and scars may accompany any of them. */
+/** Any combination of these injuries can apply to a location. */
 export const WOUND_TYPES = ['Отсечена','Увечье','Пронзена','Кровотечение','Шрам'] as const;
 
 /** Injuries are stored as an array per location; a legacy save may hold one string. */
@@ -246,12 +246,18 @@ export function findTraditionSkill(character:CompanionCharacter,name:string):Ski
     ||matching.find(skill=>skill.name===name)||matching[0]||null;
 }
 
-/** Legacy saved overrides still apply. By default use the full worn ENC. */
-export function armourPenalty(character: CompanionCharacter): number {
+export function savedArmourPenalty(character: CompanionCharacter): number | null {
   const raw: unknown = character.equipment?.armorPenalty;
-  if (raw !== undefined && raw !== null && raw !== '' && Number.isFinite(Number(raw))) return Number(raw);
+  return raw !== undefined && raw !== null && raw !== '' && Number.isFinite(Number(raw)) ? Number(raw) : null;
+}
+
+export function automaticArmourPenalty(character: CompanionCharacter): number {
   const enc = HIT_LOCATION_ORDER.reduce((sum, loc) => sum + Math.max(0, Number(character.equipment?.[loc]?.enc) || 0), 0);
   return Math.ceil(enc / 5);
+}
+
+export function armourPenalty(character: CompanionCharacter): number {
+  return savedArmourPenalty(character) ?? automaticArmourPenalty(character);
 }
 
 export interface MovementSummary {
