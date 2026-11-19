@@ -262,11 +262,18 @@
                     </div>
                   </div>
                 </div>
-                <div class="identity-mini">
-                  <label>Frame <input [ngModel]="profileValue('frame')" [readOnly]="!upgrade" (ngModelChange)="setProfileField('frame',$event)" aria-label="Frame"></label>
-                  <label>Рост, см <input type="number" [ngModel]="profileValue('height')" [readOnly]="!upgrade" (ngModelChange)="setProfileField('height',$event)" aria-label="Рост в сантиметрах"></label>
-                  <label>Вес, кг <input type="number" [ngModel]="profileValue('weight')" [readOnly]="!upgrade" (ngModelChange)="setProfileField('weight',$event)" aria-label="Вес в килограммах"></label>
-                </div>
+                <dl *ngIf="!upgrade; else profileEditor" class="identity-mini profile-values">
+                  <div><dt>Frame</dt><dd>{{character.frame || '—'}}</dd></div>
+                  <div><dt>Рост, см</dt><dd>{{profileValue('height') ?? '—'}}</dd></div>
+                  <div><dt>Вес, кг</dt><dd>{{profileValue('weight') ?? '—'}}</dd></div>
+                </dl>
+                <ng-template #profileEditor>
+                  <div class="identity-mini">
+                    <label>Frame <input [ngModel]="profileValue('frame')" (ngModelChange)="setProfileField('frame',$event)"></label>
+                    <label>Рост, см <input type="number" [ngModel]="profileValue('height')" (ngModelChange)="setProfileField('height',$event)" aria-label="Рост в сантиметрах"></label>
+                    <label>Вес, кг <input type="number" [ngModel]="profileValue('weight')" (ngModelChange)="setProfileField('weight',$event)" aria-label="Вес в килограммах"></label>
+                  </div>
+                </ng-template>
               </div>
               <div class="numbers-grid">
                 <div class="attribute metric"><small>Damage Modifier</small><strong>{{damage}}<span class="attr-delta" [class.negative]="damageDelta < 0" *ngIf="upgrade && damageDelta">{{deltaText(damageDelta)}}</span></strong></div>
@@ -298,7 +305,9 @@
             <div class="zone-title">Эффекты и состояния</div>
             <div class="fatigue">
               <div class="fatigue-row">
-                <button class="fatigue-title-button" type="button" (click)="fatigueTableOpen=true" aria-label="Показать таблицу усталости">Усталость ⓘ</button>
+                <button class="fatigue-title-button" type="button" (click)="fatigueTableOpen=true" aria-label="Показать таблицу усталости">
+                  Усталость<span class="material-icons ui-icon" aria-hidden="true">info_outline</span>
+                </button>
                 <select aria-label="Степень усталости" [ngModel]="character.fatigueLevel || 'Fresh'" (ngModelChange)="setFatigue($event)">
                   <option *ngFor="let level of fatigueLevels" [value]="level">{{level}}</option>
                 </select>
@@ -319,7 +328,9 @@
             </div>
             </div>
             <p class="empty-state" *ngIf="!generalEffects.length && !gifts.length">Активных эффектов нет.</p>
-            <button class="inline-add" type="button" (click)="openEffectDialog()">＋ Добавить эффект или состояние</button>
+            <button class="inline-add" type="button" (click)="openEffectDialog()">
+              <span class="material-icons ui-icon" aria-hidden="true">add</span>Добавить эффект или состояние
+            </button>
           </div>
           </div>
         </div>
@@ -600,21 +611,22 @@
 </ng-template>
 
 <ng-template #effectEntry let-effect>
-            <div class="effect-row"  [class.is-injury]="!!effect.injury"
-              role="button" tabindex="0" (click)="openEffectDialog(effect)"
-              (keydown.enter)="$event.target === $event.currentTarget && openEffectDialog(effect)"
-              (keydown.space)="$event.target === $event.currentTarget && openEffectDialog(effect); $event.target === $event.currentTarget && $event.preventDefault()"
-              [attr.aria-label]="'Открыть эффект ' + effect.name">
-              <div><strong>{{effect.name}}</strong><small *ngIf="effect.duration">Длительность: {{effect.duration}}</small>
-                <p class="effect-description" *ngIf="effect.description">{{effect.description}}</p>
-                <small class="effect-modifier" *ngFor="let mod of effect.modifiers">{{modifierLabel(mod)}}</small>
-              </div>
-              <span class="effect-actions">
-                <button type="button" (click)="$event.stopPropagation(); openEffectDialog(effect)" [attr.aria-label]="'Изменить эффект ' + effect.name">✎</button>
-                <button type="button" (click)="$event.stopPropagation(); removeEffect(effect.id)" [attr.aria-label]="'Снять эффект ' + effect.name">×</button>
-              </span>
-            </div>
-
+  <div class="effect-row" [class.is-injury]="!!effect.injury">
+    <button class="effect-open" type="button" (click)="openEffectDialog(effect)" [attr.aria-label]="'Изменить эффект ' + effect.name">
+      <span class="effect-summary">
+        <strong>{{effect.name}}</strong>
+        <small *ngIf="effect.duration">{{effect.duration}}</small>
+        <span class="effect-description" *ngIf="effect.description">{{effect.description}}</span>
+        <span class="effect-modifiers" *ngIf="effect.modifiers?.length">
+          <small class="effect-modifier" *ngFor="let mod of effect.modifiers">{{modifierLabel(mod)}}</small>
+        </span>
+      </span>
+      <span class="material-icons ui-icon" aria-hidden="true">edit</span>
+    </button>
+    <button class="effect-remove icon-control" type="button" (click)="removeEffect(effect.id)" [attr.aria-label]="'Снять эффект ' + effect.name">
+      <span class="material-icons ui-icon" aria-hidden="true">close</span>
+    </button>
+  </div>
 </ng-template>
 
 <!-- Skill difficulty modal, closed by backdrop, button and Escape -->
@@ -863,32 +875,37 @@
   <div class="dialog effect-dialog" role="dialog" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" aria-modal="true"
     aria-labelledby="effect-dialog-title">
     <header>
-      <div><small>{{editingInjury ? 'Травма' : 'Эффект или состояние'}}</small>
-        <h2 id="effect-dialog-title">{{editingInjury ? 'Описание травмы' : (editingEffectId ? 'Изменить эффект' : 'Новый эффект')}}</h2>
-      </div>
-      <button type="button" (click)="cancelEffect()" aria-label="Закрыть">×</button>
+      <h2 id="effect-dialog-title">{{editingInjury ? 'Описание травмы' : (editingEffectId ? 'Изменить эффект' : 'Новый эффект')}}</h2>
+      <button type="button" (click)="cancelEffect()" aria-label="Закрыть"><span class="material-icons ui-icon" aria-hidden="true">close</span></button>
     </header>
     <div class="dialog-body effect-create">
-      <p class="minor-note" *ngIf="editingInjury">Эффект связан с травмой: снятие эффекта уберёт травму, снятие травмы уберёт эффект.</p>
-      <label class="field-label">Название<input placeholder="Название эффекта" [(ngModel)]="effectName" aria-label="Название эффекта"></label>
-      <label class="field-label">Длительность<input placeholder="Время действия, 'постоянно' или пусто" [(ngModel)]="effectDuration" aria-label="Длительность эффекта"></label>
+      <p class="minor-note" *ngIf="editingInjury">При снятии травмы её эффект тоже снимается, и наоборот.</p>
+      <label class="field-label">Название<input [(ngModel)]="effectName" aria-label="Название эффекта"></label>
+      <label class="field-label">Длительность<input placeholder="Например, до конца сцены" [(ngModel)]="effectDuration" aria-label="Длительность эффекта"></label>
       <label class="field-label">Описание действия
-        <textarea rows="5" [(ngModel)]="effectDescription" placeholder="Нарративный эффект, статус или дополнительные правила…" aria-label="Описание эффекта"></textarea>
+        <textarea rows="3" [(ngModel)]="effectDescription" aria-label="Описание эффекта"></textarea>
       </label>
-      <div class="effect-modifier-heading">Модификаторы <span>(необязательно)</span></div>
-      <div class="modifier-row" *ngFor="let mod of newModifiers;let i=index">
-        <select [ngModel]="mod.kind" (ngModelChange)="setModifierKind(mod,$event)" [attr.aria-label]="'Тип модификатора '+(i+1)">
-          <option value="characteristic">Характеристика</option><option value="skill">Навык</option><option value="attribute">Атрибут</option><option value="magic">Магия</option><option value="locationHp">Максимальное здоровье локации</option>
-        </select>
-        <select [ngModel]="mod.key" (ngModelChange)="setModifierKey(mod,$event)" [attr.aria-label]="'Цель модификатора '+(i+1)">
-          <option *ngFor="let option of modifierOptions(mod.kind);trackBy:trackModifierOption" [value]="option.key">{{option.label}}</option>
-        </select>
-        <input type="number" [(ngModel)]="mod.amount" [attr.aria-label]="'Величина модификатора '+(i+1)">
-        <button type="button" (click)="newModifiers.splice(i,1)" aria-label="Удалить модификатор">×</button>
-      </div>
-      <button class="inline-add" type="button" (click)="addModifier()">＋ Модификатор</button>
-      <div class="flexline"><button class="quiet compact" type="button" (click)="cancelEffect()">Отмена</button><button class="primary compact" type="button" (click)="applyEffect()" [disabled]="!effectName.trim()">Сохранить эффект</button></div>
+      <section class="modifier-editor" aria-labelledby="effect-modifier-heading">
+        <h3 id="effect-modifier-heading">Модификаторы <small>(необязательно)</small></h3>
+        <div class="modifier-row" *ngFor="let mod of newModifiers;let i=index">
+          <select [ngModel]="mod.kind" (ngModelChange)="setModifierKind(mod,$event)" [attr.aria-label]="'Тип модификатора '+(i+1)">
+            <option value="characteristic">Характеристика</option><option value="skill">Навык</option><option value="attribute">Атрибут</option><option value="magic">Магия</option><option value="locationHp">Максимальное здоровье локации</option>
+          </select>
+          <select [ngModel]="mod.key" (ngModelChange)="setModifierKey(mod,$event)" [attr.aria-label]="'Цель модификатора '+(i+1)">
+            <option *ngFor="let option of modifierOptions(mod.kind);trackBy:trackModifierOption" [value]="option.key">{{option.label}}</option>
+          </select>
+          <input class="modifier-amount" type="number" [(ngModel)]="mod.amount" [attr.aria-label]="'Величина модификатора '+(i+1)">
+          <button class="icon-control" type="button" (click)="newModifiers.splice(i,1)" aria-label="Удалить модификатор">
+            <span class="material-icons ui-icon" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <button class="inline-add" type="button" (click)="addModifier()"><span class="material-icons ui-icon" aria-hidden="true">add</span>Модификатор</button>
+      </section>
     </div>
+    <footer class="dialog-actions">
+      <button mat-stroked-button type="button" (click)="cancelEffect()">Отмена</button>
+      <button mat-flat-button color="primary" type="button" (click)="applyEffect()" [disabled]="!effectName.trim()">Сохранить эффект</button>
+    </footer>
   </div>
 </div>
 

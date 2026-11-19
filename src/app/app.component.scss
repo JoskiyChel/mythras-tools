@@ -1,7 +1,7 @@
 .site-preferences {
   display: flex;
   justify-content: flex-end;
-  padding: 6px clamp(12px, 4vw, 32px);
+  padding: 8px clamp(12px, 4vw, 32px);
   border-block-end: 1px solid var(--ui-border);
   background: var(--ui-surface);
 }
@@ -10,12 +10,12 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 10px;
+  gap: 4px 8px;
   color: var(--ui-secondary);
   font-size: .875rem;
 
   select {
-    min-height: 34px;
+    min-height: 36px;
     max-width: 100%;
     padding: 4px 8px;
     border: 1px solid var(--ui-border);
